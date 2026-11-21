@@ -1,0 +1,21 @@
+// math.px —— 一个可被 import 的模块示例
+
+let PI = 3.14159265359
+
+fn square(x) {
+    return x * x
+}
+
+fn cube(x) {
+    return x * x * x
+}
+
+fn circleArea(radius) {
+    return PI * radius * radius
+}
+
+fn add(a, b) {
+    return a + b
+}
+
+let version = "1.0.0"

@@ -1,0 +1,85 @@
+// 斐波那契数列 - 多种实现方式
+
+// 递归实现
+fn fibRecursive(n) {
+    if n <= 1 {
+        return n
+    }
+    return fibRecursive(n - 1) + fibRecursive(n - 2)
+}
+
+// 迭代实现
+fn fibIterative(n) {
+    if n <= 1 {
+        return n
+    }
+    let a = 0
+    let b = 1
+    for i in range(2, n + 1) {
+        let temp = a + b
+        a = b
+        b = temp
+    }
+    return b
+}
+
+// 备忘录/动态规划实现
+fn fibMemo(n) {
+    let memo = {}
+    fn fibInner(k) {
+        if k <= 1 {
+            return k
+        }
+        if memo[k] != nil {
+            return memo[k]
+        }
+        memo[k] = fibInner(k - 1) + fibInner(k - 2)
+        return memo[k]
+    }
+    return fibInner(n)
+}
+
+// 生成器风格
+fn fibGenerator(n) {
+    let result = []
+    let a = 0
+    let b = 1
+    for i in range(n) {
+        push(result, a)
+        let temp = a + b
+        a = b
+        b = temp
+    }
+    return result
+}
+
+print("=== Fibonacci Sequence ===")
+print("First 10 (recursive):")
+for i in range(10) {
+    print("  fib(" + str(i) + ") = " + str(fibRecursive(i)))
+}
+
+print("\nFirst 15 (iterative):")
+for i in range(15) {
+    print("  fib(" + str(i) + ") = " + str(fibIterative(i)))
+}
+
+print("\nFirst 20 (memoized):")
+for i in range(20) {
+    print("  fib(" + str(i) + ") = " + str(fibMemo(i)))
+}
+
+print("\nFirst 15 as array:")
+let fibs = fibGenerator(15)
+print("  " + str(fibs))
+
+// 性能测试
+print("\n=== Performance Test ===")
+let n = 30
+print("Computing fib(" + str(n) + ")...")
+
+let start = 0 // 简化：实际需要时间函数
+let resultIter = fibIterative(n)
+let resultMemo = fibMemo(n)
+print("Iterative: " + str(resultIter))
+print("Memoized:  " + str(resultMemo))

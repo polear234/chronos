@@ -1,0 +1,140 @@
+// PicoX 示例程序
+
+// 变量和基本类型
+let name = "PicoX"
+let version = 0.1
+let isAwesome = true
+let nothing = nil
+
+print("Hello, " + name + " v" + str(version))
+print("Is awesome: " + str(isAwesome))
+
+// 数组操作
+let numbers = [1, 2, 3, 4, 5]
+print("Numbers: " + str(numbers))
+print("Length: " + str(len(numbers)))
+
+push(numbers, 6)
+print("After push: " + str(numbers))
+
+let popped = pop(numbers)
+print("Popped: " + str(popped))
+print("After pop: " + str(numbers))
+
+// 字典/哈希表
+let person = {"name": "Alice", "age": 30, "city": "Beijing"}
+print("Person: " + str(person))
+print("Keys: " + str(keys(person)))
+print("Values: " + str(values(person)))
+
+// 函数
+fn factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+print("Factorial of 5: " + str(factorial(5)))
+
+// 高阶函数
+fn map(arr, callback) {
+    let result = []
+    for x in arr {
+        push(result, callback(x))
+    }
+    return result
+}
+
+fn filter(arr, callback) {
+    let result = []
+    for x in arr {
+        if callback(x) {
+            push(result, x)
+        }
+    }
+    return result
+}
+
+let nums = range(1, 11)
+let doubled = map(nums, fn(x) { return x * 2 })
+let evens = filter(nums, fn(x) { return x % 2 == 0 })
+
+print("Doubled: " + str(doubled))
+print("Evens: " + str(evens))
+
+// 类和面向对象
+class Animal {
+    name = ""
+    
+    init(name) {
+        this.name = name
+    }
+    
+    speak() {
+        print(this.name + " makes a sound")
+    }
+}
+
+class Dog extends Animal {
+    breed = ""
+    
+    init(name, breed) {
+        super.init(name)
+        this.breed = breed
+    }
+    
+    speak() {
+        print(this.name + " barks! (breed: " + this.breed + ")")
+    }
+    
+    fetch() {
+        print(this.name + " fetches the ball!")
+    }
+}
+
+let dog = new Dog("Buddy", "Golden Retriever")
+dog.speak()
+dog.fetch()
+
+// 闭包
+fn makeCounter() {
+    let count = 0
+    return fn() {
+        count = count + 1
+        return count
+    }
+}
+
+let counter = makeCounter()
+print("Counter: " + str(counter()))
+print("Counter: " + str(counter()))
+print("Counter: " + str(counter()))
+
+// 模式匹配
+let value = 2
+match (value) {
+    case 1: {
+        print("One")
+    }
+    case 2: {
+        print("Two")
+    }
+    case 3: {
+        print("Three")
+    }
+    default: {
+        print("Other: " + str(value))
+    }
+}
+
+// 错误处理
+try {
+    let result = 10 / 0
+} catch (e) {
+    print("Caught error: " + e)
+} finally {
+    print("Finally block executed")
+}
+
+print("\nAll examples completed!")

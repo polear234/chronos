@@ -1,0 +1,17 @@
+// import_demo.px —— 演示 import 模块系统
+
+// 方式一：import "文件名" as 别名
+import "math" as m
+
+print("m.PI = " + str(m.PI))
+print("m.square(5) = " + str(m.square(5)))
+print("m.circleArea(3) = " + str(m.circleArea(3)))
+print("m.version = " + m.version)
+
+// 方式二：import "文件名"（默认用文件名做别名）
+import "math"
+
+print("math.add(3, 4) = " + str(math.add(3, 4)))
+print("math.cube(2) = " + str(math.cube(2)))
+
+print("\nImport demo completed!")

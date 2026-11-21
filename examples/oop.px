@@ -1,0 +1,217 @@
+// 面向对象编程示例
+
+// 基础类
+class Shape {
+    color = "black"
+    filled = false
+    
+    init(color, filled) {
+        this.color = color
+        this.filled = filled
+    }
+    
+    getColor() {
+        return this.color
+    }
+    
+    setColor(color) {
+        this.color = color
+    }
+    
+    isFilled() {
+        return this.filled
+    }
+    
+    setFilled(filled) {
+        this.filled = filled
+    }
+    
+    toString() {
+        return "Shape[color=" + this.color + ", filled=" + str(this.filled) + "]"
+    }
+    
+    // 抽象方法（由子类实现）
+    getArea() {
+        throw("getArea() not implemented")
+    }
+    
+    getPerimeter() {
+        throw("getPerimeter() not implemented")
+    }
+}
+
+// 圆形
+class Circle extends Shape {
+    radius = 1.0
+    
+    init(radius, color, filled) {
+        super.init(color, filled)
+        this.radius = radius
+    }
+    
+    getRadius() {
+        return this.radius
+    }
+    
+    setRadius(radius) {
+        this.radius = radius
+    }
+    
+    getArea() {
+        return 3.14159 * this.radius * this.radius
+    }
+    
+    getPerimeter() {
+        return 2 * 3.14159 * this.radius
+    }
+    
+    toString() {
+        return "Circle[radius=" + str(this.radius) + ", " + super.toString() + "]"
+    }
+}
+
+// 矩形
+class Rectangle extends Shape {
+    width = 1.0
+    height = 1.0
+    
+    init(width, height, color, filled) {
+        super.init(color, filled)
+        this.width = width
+        this.height = height
+    }
+    
+    getWidth() {
+        return this.width
+    }
+    
+    setWidth(width) {
+        this.width = width
+    }
+    
+    getHeight() {
+        return this.height
+    }
+    
+    setHeight(height) {
+        this.height = height
+    }
+    
+    getArea() {
+        return this.width * this.height
+    }
+    
+    getPerimeter() {
+        return 2 * (this.width + this.height)
+    }
+    
+    toString() {
+        return "Rectangle[width=" + str(this.width) + ", height=" + str(this.height) + ", " + super.toString() + "]"
+    }
+}
+
+// 正方形（继承自矩形）
+class Square extends Rectangle {
+    init(side, color, filled) {
+        super.init(side, side, color, filled)
+    }
+    
+    getSide() {
+        return this.width
+    }
+    
+    setSide(side) {
+        this.width = side
+        this.height = side
+    }
+    
+    setWidth(width) {
+        this.setSide(width)
+    }
+    
+    setHeight(height) {
+        this.setSide(height)
+    }
+    
+    toString() {
+        return "Square[side=" + str(this.width) + ", " + super.toString() + "]"
+    }
+}
+
+// 测试
+print("=== OOP Demo ===")
+
+let shapes = [
+    new Circle(5, "red", true),
+    new Rectangle(4, 6, "blue", false),
+    new Square(3, "green", true)
+]
+
+for shape in shapes {
+    print(shape.toString())
+    print("  Area: " + str(shape.getArea()))
+    print("  Perimeter: " + str(shape.getPerimeter()))
+    print()
+}
+
+// 多态演示
+fn printShapeInfo(shape) {
+    print("Type: " + type(shape))
+    print("Area: " + str(shape.getArea()))
+    print("Color: " + shape.getColor())
+    print("---")
+}
+printShapeInfo(new Circle(10, "red", true))
+printShapeInfo(new Rectangle(5, 8, "blue", false))
+printShapeInfo(new Square(4, "green", true))
+
+// 类方法/静态方法（PicoX 中类的方法都可直接通过类名调用）
+class MathUtils {
+    PI = 3.14159265359
+    
+    add(a, b) {
+        return a + b
+    }
+    
+    multiply(a, b) {
+        return a * b
+    }
+    
+    circleArea(radius) {
+        return MathUtils.PI * radius * radius
+    }
+}
+
+print("=== Static Methods ===")
+print("MathUtils.add(10, 20) = " + str(MathUtils.add(10, 20)))
+print("MathUtils.circleArea(5) = " + str(MathUtils.circleArea(5)))
+
+// 混入/组合模式
+class Flyable {
+    fly() {
+        print(this.name + " is flying!")
+    }
+}
+
+class Swimmable {
+    swim() {
+        print(this.name + " is swimming!")
+    }
+}
+
+class Bird {
+    name = ""
+    init(name) { this.name = name }
+}
+
+class Duck extends Bird {
+    init(name) { super.init(name) }
+}
+
+// 组合方式（PicoX 通过动态添加方法实现）
+let duck = new Duck("Donald")
+duck.fly = fn() { print(this.name + " is flying!") }
+duck.swim = fn() { print(this.name + " is swimming!") }
+
+duck.fly()
+duck.swim()
