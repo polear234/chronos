@@ -15,7 +15,7 @@ import (
 )
 
 // version 由 ldflags 在编译期注入（-X main.version=...），必须是 var 不能是 const
-var version = "0.1.0"
+var version = "0.1.1"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
