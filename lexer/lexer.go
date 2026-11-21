@@ -1,6 +1,9 @@
 package lexer
 
 import (
+	"unicode"
+	"unicode/utf8"
+
 	"picox/token"
 )
 
@@ -248,6 +251,7 @@ func (l *Lexer) NextToken() token.Token {
 	case 0:
 		return makeTok(token.EOF, "")
 	default:
+		// ASCII 标识符
 		if isLetter(l.ch) {
 			lit := l.readIdentifier()
 			return makeTok(token.LookupIdent(lit), lit)
@@ -255,6 +259,19 @@ func (l *Lexer) NextToken() token.Token {
 		if isDigit(l.ch) {
 			tt, lit := l.readNumber()
 			return makeTok(tt, lit)
+		}
+		// 多字节字符：允许 Unicode 字母（中文、日文、俄文等）作为标识符
+		if l.ch >= utf8.RuneSelf {
+			r, size := utf8.DecodeRuneInString(l.input[l.position:])
+			if r != utf8.RuneError && unicode.IsLetter(r) {
+				lit := l.readIdentifier()
+				return makeTok(token.LookupIdent(lit), lit)
+			}
+			// 非法多字节字符：整段作为 ILLEGAL，避免拆成乱码字节
+			for i := 0; i < size; i++ {
+				l.readChar()
+			}
+			return makeTok(token.ILLEGAL, string(r))
 		}
 		tok := makeTok(token.ILLEGAL, string(l.ch))
 		l.readChar()
@@ -290,8 +307,21 @@ func (l *Lexer) skipMultiLineComment() {
 
 func (l *Lexer) readIdentifier() string {
 	position := l.position
-	for isLetter(l.ch) || isDigit(l.ch) {
-		l.readChar()
+	for l.ch != 0 {
+		if isLetter(l.ch) || isDigit(l.ch) {
+			l.readChar()
+			continue
+		}
+		if l.ch >= utf8.RuneSelf {
+			r, size := utf8.DecodeRuneInString(l.input[l.position:])
+			if r != utf8.RuneError && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
+				for i := 0; i < size; i++ {
+					l.readChar()
+				}
+				continue
+			}
+		}
+		break
 	}
 	return l.input[position:l.position]
 }

@@ -946,3 +946,74 @@ func TestCircularImport(t *testing.T) {
 		t.Fatalf("expected circular import error, got=%T (%+v)", result, result)
 	}
 }
+
+func TestChineseIdentifiers(t *testing.T) {
+	// 中文变量名 / 函数名 / 类名 / 循环变量
+	input := `
+let 问候 = "你好"
+let 数字 = 42
+fn 加倍(数) { return 数 * 2 }
+class 猫 {
+    speak() { return "喵" }
+}
+let 水果 = ["苹果", "香蕉"]
+let 计数 = 0
+for 果 in 水果 {
+    计数 = 计数 + 1
+}
+let 喵 = new 猫()
+加倍(21) + 计数`
+	// 42 + 2 = 44
+	testIntegerObject(t, testEval(t, input), 44)
+}
+
+func TestChineseStringRunes(t *testing.T) {
+	// 字符串按 rune 计数，中文长度正确
+	input := `len("你好")`
+	testIntegerObject(t, testEval(t, input), 2)
+
+	input = `"你好"[1]`
+	if s, ok := testEval(t, input).(*object.String); !ok || s.Value != "好" {
+		t.Fatalf("expected 好, got %T", testEval(t, input))
+	}
+}
+
+func TestGlobalArrayHOF(t *testing.T) {
+	// 全局函数形态：map(arr, fn)
+	input := `map([1, 2, 3], fn(x) { x * 2 })`
+	arr, ok := testEval(t, input).(*object.Array)
+	if !ok || len(arr.Elements) != 3 {
+		t.Fatalf("expected 3 elements, got %v", arr)
+	}
+	testIntegerObject(t, arr.Elements[2], 6)
+
+	// 管道形态：arr |> map(fn)
+	input = `[1, 2, 3] |> map(fn(x) { x + 1 })`
+	arr, ok = testEval(t, input).(*object.Array)
+	if !ok || len(arr.Elements) != 3 {
+		t.Fatalf("expected 3 elements, got %v", arr)
+	}
+	testIntegerObject(t, arr.Elements[0], 2)
+
+	// filter 全局形态
+	input = `filter([1, 2, 3, 4], fn(x) { x % 2 == 0 })`
+	arr, ok = testEval(t, input).(*object.Array)
+	if !ok || len(arr.Elements) != 2 {
+		t.Fatalf("expected 2 elements, got %v", arr)
+	}
+
+	// reduce 全局形态
+	input = `reduce([1, 2, 3], fn(acc, x) { acc + x }, 0)`
+	testIntegerObject(t, testEval(t, input), 6)
+}
+
+func TestUserOverrideGlobalHOF(t *testing.T) {
+	// 用户自定义同名函数应优先于内置全局 HOF
+	input := `
+fn map(a, b) { return "custom" }
+map(1, 2)`
+	evaluated := testEval(t, input)
+	if s, ok := evaluated.(*object.String); !ok || s.Value != "custom" {
+		t.Fatalf("expected 'custom', got %T (%+v)", evaluated, evaluated)
+	}
+}

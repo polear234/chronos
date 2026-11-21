@@ -346,6 +346,12 @@ func evalCallExpression(ce *ast.CallExpression, env *object.Environment) object.
 			return evalWithSnapshot(ce.Arguments, env)
 		case "Timeline":
 			return evalTimelineConstruct(ce.Arguments, env)
+		case "map", "filter", "forEach", "reduce", "find":
+			// 数组高阶函数的「全局函数形态」：map(arr, fn)
+			// 仅当用户没有自定义同名函数时才生效，保证可覆盖
+			if _, defined := env.Get(id.Value); !defined {
+				return evalGlobalArrayHOF(id.Value, ce.Arguments, env)
+			}
 		}
 	}
 
@@ -358,6 +364,27 @@ func evalCallExpression(ce *ast.CallExpression, env *object.Environment) object.
 		return args[0]
 	}
 	return applyFunction(fn, args, env)
+}
+
+// evalGlobalArrayHOF 实现 map(arr, fn) / filter(arr, fn) / reduce(arr, fn, init?)
+// 这类「全局函数形态」，让管道符可以写成 arr |> map(fn(x){...})
+func evalGlobalArrayHOF(name string, argExprs []ast.Expression, env *object.Environment) object.Object {
+	if len(argExprs) < 2 {
+		return newError("%s expects at least 2 arguments (array, function), got %d", name, len(argExprs))
+	}
+	arrVal := Eval(argExprs[0], env)
+	if isError(arrVal) {
+		return arrVal
+	}
+	arr, ok := arrVal.(*object.Array)
+	if !ok {
+		return newError("%s: first argument must be array, got %s", name, arrVal.Type())
+	}
+	rest := evalExpressions(argExprs[1:], env)
+	if len(rest) == 1 && isError(rest[0]) {
+		return rest[0]
+	}
+	return evalArrayHigherOrderMethod(arr, name, rest, env)
 }
 
 // evalWithSnapshot 实现 withSnapshot(targets, callback)：

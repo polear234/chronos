@@ -280,3 +280,41 @@ func TestPipeVsOr(t *testing.T) {
 		t.Fatalf("expected OR '||', got %q %q", tok.Type, tok.Literal)
 	}
 }
+
+func TestUnicodeIdentifiers(t *testing.T) {
+	// 中文标识符应被识别为 IDENT，而不是逐字节拆成 ILLEGAL
+	input := `let 问候语 = "你好"`
+
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+	}{
+		{token.LET, "let"},
+		{token.IDENT, "问候语"},
+		{token.ASSIGN, "="},
+		{token.STRING, "你好"},
+		{token.EOF, ""},
+	}
+
+	l := New(input)
+	for i, tt := range tests {
+		tok := l.NextToken()
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q", i, tt.expectedType, tok.Type)
+		}
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q", i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
+
+func TestUnicodeMixedIdentifier(t *testing.T) {
+	// 中英文混排的标识符也应完整识别
+	input := `let 水果list2 = 1`
+	l := New(input)
+	l.NextToken() // let
+	tok := l.NextToken()
+	if tok.Type != token.IDENT || tok.Literal != "水果list2" {
+		t.Fatalf("expected IDENT '水果list2', got %q %q", tok.Type, tok.Literal)
+	}
+}

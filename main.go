@@ -15,9 +15,13 @@ import (
 )
 
 // version 由 ldflags 在编译期注入（-X main.version=...），必须是 var 不能是 const
-var version = "0.1.1"
+var version = "0.1.2"
 
 func main() {
+	// 被 picox build 编译过的程序：直接执行内嵌脚本
+	if script, ok := selfPayload(); ok {
+		os.Exit(runEmbedded(script))
+	}
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
@@ -32,6 +36,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "run", "-run", "--run":
 		return cmdRun(args[1:], stdin, stdout, stderr)
+
+	case "build", "-build", "--build":
+		return cmdBuild(args[1:], stdout, stderr)
 
 	case "repl", "-repl", "--repl":
 		repl.Start(stdin, stdout)
@@ -110,14 +117,17 @@ Usage:
   picox                     Start the interactive REPL
   picox run <file.px>       Run a script file
   picox -run <file.px>      Run a script file (shorthand)
-  picox run -              Read and run source from stdin
+  picox build <file.px>     Compile a script into a standalone executable
+  picox build <file.px> -o <name>   Compile with a custom output name
+  picox run -               Read and run source from stdin
   picox version             Print version
   picox help                Show this help
 
 Examples:
   picox
   picox run examples/hello.px
-  picox -run examples/fibonacci.px
+  picox build examples/hello.px        # 产出 ./hello 可执行文件
+  picox build app.px -o /usr/local/bin/app
   echo 'print("hi")' | picox run -
 `, version)
 }

@@ -65,6 +65,7 @@ print(dog.speak())            // "Buddy barks!"
 - [📖 语法速览](#-语法速览)
 - [🧰 内置函数与方法](#-内置函数与方法)
 - [💻 命令行](#-命令行)
+- [📦 编译成独立可执行文件](#-编译成独立可执行文件)
 - [📁 示例程序](#-示例程序)
 - [🏗️ 架构](#️-架构)
 - [⚠️ 已知限制](#️-已知限制)
@@ -87,6 +88,7 @@ print(dog.speak())            // "Buddy barks!"
 | ⛓️ **语法糖** | 管道操作符 `\|>` · 数组/字符串/字典方法链 · 类型标注 |
 | 📦 **模块系统** | `import`/`as` · 独立环境 · 循环引用检测 |
 | 🧰 **标准库** | 字符串 / 数组 / 字典方法 · 类型转换 · `range` |
+| 🌏 **国际化** | Unicode 标识符：中文 / 日文 / 俄文均可作变量名、函数名、类名 |
 
 ---
 
@@ -402,14 +404,61 @@ print(math.PI)        // → 3.14159
 | `picox` | 启动交互式 REPL |
 | `picox run <file.px>` | 运行脚本 |
 | `picox -run <file.px>` | 运行脚本（简写） |
+| `picox build <file.px>` | **编译成独立可执行文件** |
+| `picox build <file.px> -o <name>` | 编译并指定输出名 |
 | `picox <file.px>` | 运行脚本（识别 `.px` 后缀） |
 | `picox run -` | 从 stdin 读取并执行 |
 | `picox version` | 查看版本 |
 | `picox help` | 查看帮助 |
 
-退出码：`0` 成功，`1` 运行时错误，`2` 用法错误。
+退出码：`0` 成功，`1` 运行时/编译错误，`2` 用法错误。
 
 REPL 内置命令：`exit` / `quit` 退出，`clear` 清空环境。
+
+---
+
+## 📦 编译成独立可执行文件
+
+`picox build` 把 `.px` 脚本**嵌入解释器副本**，产出一个单文件可执行程序 —— 双击就能跑，不需要源文件、不需要装 PicoX。
+
+```bash
+$ picox build examples/hello.px
+✓ 已编译: hello
+  源文件: examples/hello.px (2518 字节)
+  产物:   /home/me/picox/hello (2737564 字节)
+  运行:   ./hello
+
+$ ./hello
+Hello, PicoX v0.1
+Is awesome: true
+...
+```
+
+自定义输出名：
+
+```bash
+picox build app.px -o /usr/local/bin/app
+```
+
+**实现原理**：在解释器二进制尾部追加 `[payload][8字节长度][16字节 magic]`，启动时检测到 magic 就直接执行内嵌脚本。
+
+**默认开启混淆加密**（AES-256-CTR，每份产物随机盐）：
+
+```bash
+picox build app.px              # 默认：加密混淆
+picox build app.px --plain      # 关闭加密，嵌入明文（便于调试）
+```
+
+- 加密后源码在二进制里是密文，`strings` / `hexdump` / `grep -a` 都读不出脚本内容
+- 同一脚本两次编译产物**不同**（随机盐），无法用哈希比对或差分推断
+- ⚠️ **这是混淆不是密码学安全**：解密密钥必须随二进制分发，有决心的人仍可逆向还原。它的目标是阻止"随手翻出源码"，不是防专业破解。真正的保密需要运行时输入密码解密，那是另一套设计。
+
+其他特性：
+
+- 产物与原解释器体积几乎相同（只多出脚本本身的大小）
+- **import 的相对路径以可执行文件所在目录为基准**，可把程序和模块一起分发
+- 编译前做语法检查，有错误直接中止（不会产出「一跑就炸」的二进制）
+- 支持对已 build 的二进制再次 build（自动剥离旧 payload，不叠加）
 
 ---
 
@@ -422,6 +471,7 @@ REPL 内置命令：`exit` / `quit` 退出，`clear` 清空环境。
 | [`oop.px`](examples/oop.px) | 面向对象：类、继承、多态、静态方法、动态方法 |
 | [`math.px`](examples/math.px) | 可被 import 的数学模块 |
 | [`import_demo.px`](examples/import_demo.px) | 模块系统演示 |
+| [`i18n.px`](examples/i18n.px) | 中文变量/类/管道/回滚 全方位国际化测试 |
 
 ```bash
 picox -run examples/hello.px
@@ -458,7 +508,6 @@ picox/                          ~6.5k 行 Go 代码
 - **标准库较薄**：没有文件 IO、网络、正则、数学函数（`sqrt`/`sin` 等）
 - **`import` 不缓存**：同一个模块被多处导入会重复执行
 - **`match` 只做值匹配**：不支持 `case [a, b]:` 这类结构解构
-- **方法 vs 函数**：`map`/`filter` 是数组方法，所以 `arr |> map(fn)` 不工作，需写 `arr.map(fn)` 或定义全局 `map` 函数
 - **无 GC 调优**：解释器直接用 Go 的 GC，长循环会积累临时对象
 - **无调试器**：只能靠 `print` 和 REPL 排查
 

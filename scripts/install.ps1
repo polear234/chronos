@@ -14,7 +14,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Version = "0.1.1"
+$Version = "0.1.2"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BinDir = Join-Path $ScriptDir "bin"
 
