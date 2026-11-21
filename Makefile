@@ -1,7 +1,7 @@
 .PHONY: build run test clean dist install all
 
 BINARY := picox
-VERSION := 0.1.2
+VERSION := 0.1.3
 
 # 默认：编译出完全独立的静态二进制（无外部依赖，可直接拷贝到任何同架构 Linux 运行）
 build:

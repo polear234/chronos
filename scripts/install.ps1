@@ -9,14 +9,21 @@
 param(
     [ValidateSet("User", "Machine")]
     [string]$Scope = "User",
-    [string]$InstallDir = ""
+    [string]$InstallDir = "",
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
 
-$Version = "0.1.2"
+$Version = "0.1.3"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$BinDir = Join-Path $ScriptDir "bin"
+
+# 优先脚本同目录（发布包），其次 ../bin（源码树）
+if (Get-ChildItem -Path $ScriptDir -Filter "picox-windows-*.exe" -ErrorAction SilentlyContinue) {
+    $BinDir = $ScriptDir
+} else {
+    $BinDir = Join-Path $ScriptDir "bin"
+}
 
 # ---- 检测架构 ----
 $Arch = $env:PROCESSOR_ARCHITECTURE
@@ -42,8 +49,29 @@ if ($InstallDir -eq "") {
 $Src = Join-Path $BinDir $Binary
 if (-not (Test-Path $Src)) {
     Write-Host "✗ 找不到二进制文件: $Src" -ForegroundColor Red
-    Write-Host "  请先在项目根目录执行: make dist" -ForegroundColor Yellow
+    Write-Host "  源码安装：在项目根目录执行 make dist" -ForegroundColor Yellow
+    Write-Host "  发布包：确保 install.ps1 与 picox-windows-*.exe 在同一目录" -ForegroundColor Yellow
     exit 1
+}
+
+# ---- 校验二进制版本（版本号编译期注入，旧构建会显示旧值）----
+$Expect = "PicoX $Version"
+$Actual = ""
+try { $Actual = (& $Src version 2>$null | Select-Object -First 1) } catch { $Actual = "" }
+if ($Actual -ne $Expect) {
+    Write-Host "✗ 二进制版本不匹配，已中止安装" -ForegroundColor Red
+    Write-Host "    期望: $Expect"
+    Write-Host "    实际: $(if ($Actual) { $Actual } else { '（无法执行该文件）' })"
+    Write-Host "    文件: $Src"
+    Write-Host ""
+    if (-not $Force) {
+        Write-Host "  原因：版本号在编译期由 -ldflags 注入，旧二进制不会自动变新。" -ForegroundColor Yellow
+        Write-Host "  修复（源码）：在项目根目录执行 make dist" -ForegroundColor Yellow
+        Write-Host "  修复（发布包）：重新下载 v$Version 的文件，别混用旧目录" -ForegroundColor Yellow
+        Write-Host "  确认要装旧二进制：加 -Force" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "  -Force 已指定，忽略版本不符继续安装。" -ForegroundColor Yellow
 }
 
 # ---- 安装 ----
