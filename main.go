@@ -7,18 +7,18 @@ import (
 	"os"
 	"path/filepath"
 
-	"picox/interpreter"
-	"picox/lexer"
-	"picox/object"
-	"picox/parser"
-	"picox/repl"
+	"chronos/interpreter"
+	"chronos/lexer"
+	"chronos/object"
+	"chronos/parser"
+	"chronos/repl"
 )
 
 // version 由 ldflags 在编译期注入（-X main.version=...），必须是 var 不能是 const
-var version = "0.1.3"
+var version = "0.2.0"
 
 func main() {
-	// 被 picox build 编译过的程序：直接执行内嵌脚本
+	// 被 chronos build 编译过的程序：直接执行内嵌脚本
 	if script, ok := selfPayload(); ok {
 		os.Exit(runEmbedded(script))
 	}
@@ -45,7 +45,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 
 	case "version", "-v", "-version", "--version":
-		fmt.Fprintf(stdout, "PicoX %s\n", version)
+		fmt.Fprintf(stdout, "Chronos %s\n", version)
 		return 0
 
 	case "help", "-h", "-help", "--help":
@@ -53,7 +53,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 
 	default:
-		// 兼容旧用法：picox foo.px 直接运行（视为 run 的简写）
+		// 兼容旧用法：chronos foo.px 直接运行（视为 run 的简写）
 		if isScriptArg(args[0]) {
 			return cmdRun(args, stdin, stdout, stderr)
 		}
@@ -67,8 +67,8 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: picox run [options] <file.px>")
-		fmt.Fprintln(stderr, "       picox -run <file.px>")
+		fmt.Fprintln(stderr, "Usage: chronos run [options] <file.px>")
+		fmt.Fprintln(stderr, "       chronos -run <file.px>")
 		fmt.Fprintln(stderr, "\nOptions:")
 		fs.PrintDefaults()
 	}
@@ -76,7 +76,7 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	files := fs.Args()
 	if len(files) == 0 {
-		fmt.Fprintln(stderr, "error: no input file (use 'picox run file.px', or '-' to read from stdin)")
+		fmt.Fprintln(stderr, "error: no input file (use 'chronos run file.px', or '-' to read from stdin)")
 		return 2
 	}
 
@@ -111,24 +111,24 @@ func isScriptArg(arg string) bool {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintf(w, `PicoX %s — a lightweight scripting language
+	fmt.Fprintf(w, `Chronos %s — a lightweight scripting language
 
 Usage:
-  picox                     Start the interactive REPL
-  picox run <file.px>       Run a script file
-  picox -run <file.px>      Run a script file (shorthand)
-  picox build <file.px>     Compile a script into a standalone executable
-  picox build <file.px> -o <name>   Compile with a custom output name
-  picox run -               Read and run source from stdin
-  picox version             Print version
-  picox help                Show this help
+  chronos                     Start the interactive REPL
+  chronos run <file.px>       Run a script file
+  chronos -run <file.px>      Run a script file (shorthand)
+  chronos build <file.px>     Compile a script into a standalone executable
+  chronos build <file.px> -o <name>   Compile with a custom output name
+  chronos run -               Read and run source from stdin
+  chronos version             Print version
+  chronos help                Show this help
 
 Examples:
-  picox
-  picox run examples/hello.px
-  picox build examples/hello.px        # 产出 ./hello 可执行文件
-  picox build app.px -o /usr/local/bin/app
-  echo 'print("hi")' | picox run -
+  chronos
+  chronos run examples/hello.px
+  chronos build examples/hello.px        # 产出 ./hello 可执行文件
+  chronos build app.px -o /usr/local/bin/app
+  echo 'print("hi")' | chronos run -
 `, version)
 }
 

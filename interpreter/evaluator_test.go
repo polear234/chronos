@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"picox/lexer"
-	"picox/object"
-	"picox/parser"
+	"chronos/lexer"
+	"chronos/object"
+	"chronos/parser"
 )
 
 func testEval(t *testing.T, input string) object.Object {

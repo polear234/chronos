@@ -49,14 +49,14 @@ jobs:
           [ -n "$VERSION" ] || VERSION="0.1.0"
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"
-          OUT="picox-${GOOS}-${GOARCH}${EXT}"
+          OUT="chronos-${GOOS}-${GOARCH}${EXT}"
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$OUT" .
           ls -lh "dist/$OUT"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: picox-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: chronos-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
           retention-days: 7
 
@@ -80,19 +80,19 @@ jobs:
       - name: Notes
         run: |
           {
-            printf 'PicoX %s\n\n' "$GITHUB_REF_NAME"
+            printf 'Chronos %s\n\n' "$GITHUB_REF_NAME"
             printf '用 Go 手写的轻量脚本语言：变量时间旅行 `rollback()`、`withSnapshot`、管道 `|>`、数组方法链、类继承、模式匹配、import 模块。\n\n'
             printf '### 下载\n\n'
             printf '| 平台 | 文件 |\n|---|---|\n'
-            for f in dist/picox-*; do
+            for f in dist/chronos-*; do
               case "$f" in *SHA256*) continue;; esac
               printf '| %s | `%s` |\n' "$(basename "$f")" "$(basename "$f")"
             done
             printf '\n### 快速开始\n\n'
             printf '```bash\n'
-            printf 'chmod +x picox-linux-arm64\n'
-            printf './picox-linux-arm64 run examples/hello.px\n'
-            printf './picox-linux-arm64          # 进入 REPL\n'
+            printf 'chmod +x chronos-linux-arm64\n'
+            printf './chronos-linux-arm64 run examples/hello.px\n'
+            printf './chronos-linux-arm64          # 进入 REPL\n'
             printf '```\n\n'
             printf '单文件静态二进制，无运行时依赖。校验和见 `SHA256SUMS.txt`。\n'
           } > NOTES.md
@@ -108,6 +108,6 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" dist/* \
               --repo "$GITHUB_REPOSITORY" \
-              --title "PicoX $GITHUB_REF_NAME" \
+              --title "Chronos $GITHUB_REF_NAME" \
               --notes-file NOTES.md
           fi

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"picox/ast"
-	"picox/lexer"
-	"picox/token"
+	"chronos/ast"
+	"chronos/lexer"
+	"chronos/token"
 )
 
 // Parser 语法分析器

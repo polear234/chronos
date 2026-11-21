@@ -4,7 +4,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"picox/token"
+	"chronos/token"
 )
 
 type Lexer struct {

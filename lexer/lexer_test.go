@@ -3,7 +3,7 @@ package lexer
 import (
 	"testing"
 
-	"picox/token"
+	"chronos/token"
 )
 
 func TestNextToken(t *testing.T) {

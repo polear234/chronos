@@ -1,7 +1,7 @@
-# PicoX Windows 一键安装脚本
+# Chronos Windows 一键安装脚本
 # 用法（PowerShell）：
-#   .\install.ps1                      安装到用户目录 %LOCALAPPDATA%\picox，并写入用户 PATH
-#   .\install.ps1 -Scope Machine       安装到 C:\Program Files\picox（需要管理员）
+#   .\install.ps1                      安装到用户目录 %LOCALAPPDATA%\chronos，并写入用户 PATH
+#   .\install.ps1 -Scope Machine       安装到 C:\Program Files\chronos（需要管理员）
 #   .\install.ps1 -InstallDir D:\tools  安装到自定义目录
 #
 # 自动检测 CPU 架构（amd64/arm64），选择对应二进制。
@@ -15,11 +15,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Version = "0.1.3"
+$Version = "0.2.0"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # 优先脚本同目录（发布包），其次 ../bin（源码树）
-if (Get-ChildItem -Path $ScriptDir -Filter "picox-windows-*.exe" -ErrorAction SilentlyContinue) {
+if (Get-ChildItem -Path $ScriptDir -Filter "chronos-windows-*.exe" -ErrorAction SilentlyContinue) {
     $BinDir = $ScriptDir
 } else {
     $BinDir = Join-Path $ScriptDir "bin"
@@ -28,8 +28,8 @@ if (Get-ChildItem -Path $ScriptDir -Filter "picox-windows-*.exe" -ErrorAction Si
 # ---- 检测架构 ----
 $Arch = $env:PROCESSOR_ARCHITECTURE
 switch ($Arch) {
-    "AMD64" { $Binary = "picox-windows-amd64.exe" }
-    "ARM64" { $Binary = "picox-windows-arm64.exe" }
+    "AMD64" { $Binary = "chronos-windows-amd64.exe" }
+    "ARM64" { $Binary = "chronos-windows-arm64.exe" }
     default {
         Write-Host "✗ 不支持的架构: $Arch" -ForegroundColor Red
         Write-Host "  支持的架构: AMD64, ARM64"
@@ -40,9 +40,9 @@ switch ($Arch) {
 # ---- 确定安装目录 ----
 if ($InstallDir -eq "") {
     if ($Scope -eq "Machine") {
-        $InstallDir = Join-Path $env:ProgramFiles "picox"
+        $InstallDir = Join-Path $env:ProgramFiles "chronos"
     } else {
-        $InstallDir = Join-Path $env:LOCALAPPDATA "picox"
+        $InstallDir = Join-Path $env:LOCALAPPDATA "chronos"
     }
 }
 
@@ -50,12 +50,12 @@ $Src = Join-Path $BinDir $Binary
 if (-not (Test-Path $Src)) {
     Write-Host "✗ 找不到二进制文件: $Src" -ForegroundColor Red
     Write-Host "  源码安装：在项目根目录执行 make dist" -ForegroundColor Yellow
-    Write-Host "  发布包：确保 install.ps1 与 picox-windows-*.exe 在同一目录" -ForegroundColor Yellow
+    Write-Host "  发布包：确保 install.ps1 与 chronos-windows-*.exe 在同一目录" -ForegroundColor Yellow
     exit 1
 }
 
 # ---- 校验二进制版本（版本号编译期注入，旧构建会显示旧值）----
-$Expect = "PicoX $Version"
+$Expect = "Chronos $Version"
 $Actual = ""
 try { $Actual = (& $Src version 2>$null | Select-Object -First 1) } catch { $Actual = "" }
 if ($Actual -ne $Expect) {
@@ -75,12 +75,12 @@ if ($Actual -ne $Expect) {
 }
 
 # ---- 安装 ----
-Write-Host "==> PicoX $Version 安装" -ForegroundColor Cyan
+Write-Host "==> Chronos $Version 安装" -ForegroundColor Cyan
 Write-Host "    架构: $Arch"
 Write-Host "    目标: $InstallDir"
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-$Dest = Join-Path $InstallDir "picox.exe"
+$Dest = Join-Path $InstallDir "chronos.exe"
 
 try {
     Copy-Item -Path $Src -Destination $Dest -Force
@@ -129,15 +129,15 @@ $env:Path = "$InstallDir;$env:Path"
 
 # ---- 验证 ----
 Write-Host ""
-if (Get-Command picox -ErrorAction SilentlyContinue) {
+if (Get-Command chronos -ErrorAction SilentlyContinue) {
     Write-Host "✓ 安装成功！" -ForegroundColor Green
     & $Dest version
 } else {
     Write-Host "✓ 已安装到 $Dest" -ForegroundColor Green
-    Write-Host "  ⚠ 当前窗口可能未刷新 PATH，请重新打开终端后使用 picox" -ForegroundColor Yellow
+    Write-Host "  ⚠ 当前窗口可能未刷新 PATH，请重新打开终端后使用 chronos" -ForegroundColor Yellow
 }
 
 Write-Host ""
 Write-Host "快速开始:"
-Write-Host "  picox                  # 启动 REPL"
-Write-Host "  picox -run hello.px    # 运行脚本"
+Write-Host "  chronos                  # 启动 REPL"
+Write-Host "  chronos -run hello.px    # 运行脚本"

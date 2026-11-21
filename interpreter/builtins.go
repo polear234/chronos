@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"picox/object"
+	"chronos/object"
 )
 
 // builtins 全局内置函数

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"picox/ast"
+	"chronos/ast"
 )
 
 // Integer 整数对象

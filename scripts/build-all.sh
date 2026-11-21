@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 交叉编译 PicoX 为多平台独立二进制
+# 交叉编译 Chronos 为多平台独立二进制
 # 用法: ./scripts/build-all.sh
 set -euo pipefail
 
@@ -22,7 +22,7 @@ targets=(
 for t in "${targets[@]}"; do
   goos="${t%/*}"
   goarch="${t#*/}"
-  outname="picox-${goos}-${goarch}"
+  outname="chronos-${goos}-${goarch}"
   if [ "$goos" = "windows" ]; then
     outname="${outname}.exe"
   fi

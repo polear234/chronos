@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"picox/ast"
-	"picox/lexer"
-	"picox/object"
-	"picox/parser"
-	"picox/token"
+	"chronos/ast"
+	"chronos/lexer"
+	"chronos/object"
+	"chronos/parser"
+	"chronos/token"
 )
 
 var (

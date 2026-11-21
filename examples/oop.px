@@ -165,7 +165,7 @@ printShapeInfo(new Circle(10, "red", true))
 printShapeInfo(new Rectangle(5, 8, "blue", false))
 printShapeInfo(new Square(4, "green", true))
 
-// 类方法/静态方法（PicoX 中类的方法都可直接通过类名调用）
+// 类方法/静态方法（Chronos 中类的方法都可直接通过类名调用）
 class MathUtils {
     PI = 3.14159265359
     
@@ -208,7 +208,7 @@ class Duck extends Bird {
     init(name) { super.init(name) }
 }
 
-// 组合方式（PicoX 通过动态添加方法实现）
+// 组合方式（Chronos 通过动态添加方法实现）
 let duck = new Duck("Donald")
 duck.fly = fn() { print(this.name + " is flying!") }
 duck.swim = fn() { print(this.name + " is swimming!") }

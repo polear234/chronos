@@ -6,13 +6,13 @@ import (
 	"io"
 	"strings"
 
-	"picox/interpreter"
-	"picox/lexer"
-	"picox/object"
-	"picox/parser"
+	"chronos/interpreter"
+	"chronos/lexer"
+	"chronos/object"
+	"chronos/parser"
 )
 
-const PROMPT = "picox> "
+const PROMPT = "chronos> "
 const CONTINUATION_PROMPT = ".... "
 
 // Start 启动 REPL
@@ -21,7 +21,7 @@ func Start(in io.Reader, out io.Writer) {
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	env := object.NewEnvironment()
 
-	fmt.Fprintln(out, "PicoX v0.1.0 — a lightweight scripting language (Go implementation)")
+	fmt.Fprintln(out, "Chronos — a lightweight scripting language (Go implementation)")
 	fmt.Fprintln(out, "Type 'exit' / 'quit' to leave, 'clear' to reset the environment.")
 	fmt.Fprintln(out)
 

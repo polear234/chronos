@@ -15,8 +15,8 @@ import (
 	"runtime"
 	"strings"
 
-	"picox/lexer"
-	"picox/parser"
+	"chronos/lexer"
+	"chronos/parser"
 )
 
 // 可执行文件尾部布局（payload 区域 = base 之后全部内容）：
@@ -26,19 +26,19 @@ import (
 //
 // 加密模式下源码在二进制里是密文，strings / hexdump 无法直接读出脚本内容。
 var (
-	magicPlain = []byte("PICOX_PAYLOAD_V1") // 16 字节：明文
-	magicEnc   = []byte("PICOX_PAYLOAD_E1") // 16 字节：AES-CTR 加密
+	magicPlain = []byte("CHRONOS_PAYLOAD_V1") // 18 字节：明文
+	magicEnc   = []byte("CHRONOS_PAYLOAD_E1") // 18 字节：AES-CTR 加密
 )
 
 const (
-	magicLen = 16
+	magicLen = 18
 	sizeLen  = 8
 	saltLen  = 16
 )
 
 // payloadSecret 参与密钥派生。注意：它必须随二进制分发，
 // 因此这层保护属于「混淆」而非「密码学安全」。
-var payloadSecret = []byte("PicoX::payload::v1::2026")
+var payloadSecret = []byte("Chronos::payload::v1::2026")
 
 // deriveKey 由盐派生 32 字节 AES-256 密钥
 func deriveKey(salt []byte) []byte {
@@ -156,7 +156,7 @@ func runEmbedded(script []byte) int {
 	return 0
 }
 
-// cmdBuild 实现 picox build <file.px> [-o out] [--plain]：
+// cmdBuild 实现 chronos build <file.px> [-o out] [--plain]：
 // 把脚本嵌入解释器副本，产出一个独立可执行文件（默认加密混淆）。
 func cmdBuild(args []string, stdout, stderr io.Writer) int {
 	var outPath, srcPath string
@@ -181,7 +181,7 @@ func cmdBuild(args []string, stdout, stderr io.Writer) int {
 		case a == "--encrypt" || a == "-e":
 			encrypt = true
 		case a == "-h" || a == "--help":
-			fmt.Fprintln(stdout, `用法: picox build <file.px> [-o 输出文件名] [--plain]
+			fmt.Fprintln(stdout, `用法: chronos build <file.px> [-o 输出文件名] [--plain]
 
   -o, --output <name>   指定输出文件名（默认取脚本名）
   --plain, -p           不做加密混淆，直接嵌入明文脚本（便于调试）
@@ -200,7 +200,7 @@ func cmdBuild(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if srcPath == "" {
-		fmt.Fprintln(stderr, "error: 缺少输入文件（用法: picox build <file.px> [-o 输出]）")
+		fmt.Fprintln(stderr, "error: 缺少输入文件（用法: chronos build <file.px> [-o 输出]）")
 		return 2
 	}
 

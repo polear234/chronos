@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/logo.png" width="180" alt="PicoX logo">
+<img src="docs/logo.png" width="180" alt="Chronos logo">
 
-# 🚀 PicoX
+# 🚀 Chronos
 
 **一个用 Go 手写的轻量级动态类型脚本语言**
 
@@ -11,8 +11,8 @@
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/picox/release.yml?branch=main)](https://github.com/polear234/picox/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/polear234/picox)](https://goreportcard.com/report/github.com/polear234/picox)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronos/release.yml?branch=main)](https://github.com/polear234/chronos/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronos)](https://goreportcard.com/report/github.com/polear234/chronos)
 [![Go Version](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
 [![Lines](https://img.shields.io/badge/code-6.5k%20lines-informational.svg)]()
@@ -23,11 +23,11 @@
 
 ---
 
-## ✨ 为什么是 PicoX？
+## ✨ 为什么是 Chronos？
 
-大多数脚本语言把「时间」留给了程序员自己管理。PicoX 把它做成了语言的一等概念 —— **变量能回滚、数据能快照、操作能撤销**。
+大多数脚本语言把「时间」留给了程序员自己管理。Chronos 把它做成了语言的一等概念 —— **变量能回滚、数据能快照、操作能撤销**。
 
-```picox
+```chronos
 // 🕐 变量时间旅行：每次赋值自动压栈，可逐步回滚
 let traveller int b = 1
 b = 2
@@ -57,7 +57,7 @@ print(dog.speak())            // "Buddy barks!"
 
 ## 📑 目录
 
-- [✨ 为什么是 PicoX？](#-为什么是-picox)
+- [✨ 为什么是 Chronos？](#-为什么是-chronos)
 - [🌟 特性](#-特性)
 - [📦 安装](#-安装)
 - [🚀 快速开始](#-快速开始)
@@ -98,13 +98,13 @@ print(dog.speak())            // "Buddy barks!"
 
 ```bash
 # amd64 机器
-sudo dpkg -i picox_0.1.0_amd64.deb
+sudo dpkg -i chronos_0.1.0_amd64.deb
 
 # arm64 机器（手机 / 树莓派 / 苹果 M 系列）
-sudo dpkg -i picox_0.1.0_arm64.deb
+sudo dpkg -i chronos_0.1.0_arm64.deb
 
 # 验证
-picox --version     # PicoX 0.1.0
+chronos --version     # Chronos 0.1.0
 ```
 
 ### 📜 方式二：安装脚本
@@ -117,7 +117,7 @@ sudo ./install.sh          # 系统级安装到 /usr/local/bin
 ### 🔨 方式三：源码编译
 
 ```bash
-go build -o picox .        # 编译单文件二进制
+go build -o chronos .        # 编译单文件二进制
 make dist                  # 交叉编译六平台（linux/macos/windows × amd64/arm64）
 ```
 
@@ -128,35 +128,35 @@ make dist                  # 交叉编译六平台（linux/macos/windows × amd6
 ## 🚀 快速开始
 
 ```bash
-$ picox
-PicoX v0.1.0 — a lightweight scripting language (Go implementation)
+$ chronos
+Chronos v0.1.0 — a lightweight scripting language (Go implementation)
 Type 'exit' / 'quit' to leave, 'clear' to reset the environment.
 
-picox> let x = 40 + 2
-picox> x
+chronos> let x = 40 + 2
+chronos> x
 42
-picox> fn fib(n) { if n <= 1 { return n } return fib(n-1) + fib(n-2) }
-picox> fib(10)
+chronos> fn fib(n) { if n <= 1 { return n } return fib(n-1) + fib(n-2) }
+chronos> fib(10)
 55
 ```
 
 运行脚本：
 
 ```bash
-picox -run hello.px            # 运行文件
-picox run -                    # 从 stdin 读取
-echo 'print("Hello World!")' | picox run -
+chronos -run hello.px            # 运行文件
+chronos run -                    # 从 stdin 读取
+echo 'print("Hello World!")' | chronos run -
 ```
 
 ---
 
 ## 🕐 时间特性
 
-这是 PicoX 与其他脚本语言最大的不同。
+这是 Chronos 与其他脚本语言最大的不同。
 
 ### traveller 变量（可回滚）
 
-```picox
+```chronos
 let traveller int x = 1
 x = 2
 x = 3
@@ -171,7 +171,7 @@ x.rollback()   // 💥 ERROR: Traveller history is empty
 
 ### withSnapshot（事务性回滚）
 
-```picox
+```chronos
 let arr = [1, 2, 3]
 withSnapshot([arr], fn() {
     arr.push(4)
@@ -184,7 +184,7 @@ arr          // → [1, 2, 3]（自动恢复）
 
 ### Timeline（版本历史）
 
-```picox
+```chronos
 let data = [1]
 let tl = Timeline(data)
 
@@ -203,7 +203,7 @@ tl.undo()        // → [1]
 
 ### 📌 变量与类型
 
-```picox
+```chronos
 let x = 10            // 可变变量
 const PI = 3.14159    // 常量（重新赋值会报错）
 
@@ -215,12 +215,12 @@ let nothing = nil     // 空值
 
 // 类型标注
 let int count = 0
-let string name = "PicoX"
+let string name = "Chronos"
 ```
 
 ### 📚 数组与字典
 
-```picox
+```chronos
 let lst = [1, 2, 3, "hello"]
 
 lst.push(4)                            // 追加
@@ -239,7 +239,7 @@ dict.has("name")                       // 是否存在
 
 ### 🎯 函数与闭包
 
-```picox
+```chronos
 fn add(a, b) {
     return a + b
 }
@@ -260,7 +260,7 @@ counter()   // 2
 
 ### 🔀 控制流
 
-```picox
+```chronos
 if x > 0 {
     print("positive")
 } elif x < 0 {
@@ -284,7 +284,7 @@ while condition {
 
 ### 🏛️ 类与继承
 
-```picox
+```chronos
 class Animal {
     name = ""
 
@@ -311,7 +311,7 @@ dog.speak()    // → "Buddy barks!"
 
 ### 🧩 模式匹配
 
-```picox
+```chronos
 match (value) {
     case 1:       { print("one") }
     case "hello": { print("greeting") }
@@ -321,7 +321,7 @@ match (value) {
 
 ### 🛡️ 错误处理
 
-```picox
+```chronos
 try {
     let result = 10 / 0
 } catch (e) {
@@ -335,7 +335,7 @@ throw("Something went wrong")
 
 ### 📦 模块系统
 
-```picox
+```chronos
 // math.px
 let PI = 3.14159
 fn square(x) { return x * x }
@@ -401,15 +401,15 @@ print(math.PI)        // → 3.14159
 
 | 命令 | 说明 |
 |------|------|
-| `picox` | 启动交互式 REPL |
-| `picox run <file.px>` | 运行脚本 |
-| `picox -run <file.px>` | 运行脚本（简写） |
-| `picox build <file.px>` | **编译成独立可执行文件** |
-| `picox build <file.px> -o <name>` | 编译并指定输出名 |
-| `picox <file.px>` | 运行脚本（识别 `.px` 后缀） |
-| `picox run -` | 从 stdin 读取并执行 |
-| `picox version` | 查看版本 |
-| `picox help` | 查看帮助 |
+| `chronos` | 启动交互式 REPL |
+| `chronos run <file.px>` | 运行脚本 |
+| `chronos -run <file.px>` | 运行脚本（简写） |
+| `chronos build <file.px>` | **编译成独立可执行文件** |
+| `chronos build <file.px> -o <name>` | 编译并指定输出名 |
+| `chronos <file.px>` | 运行脚本（识别 `.px` 后缀） |
+| `chronos run -` | 从 stdin 读取并执行 |
+| `chronos version` | 查看版本 |
+| `chronos help` | 查看帮助 |
 
 退出码：`0` 成功，`1` 运行时/编译错误，`2` 用法错误。
 
@@ -419,17 +419,17 @@ REPL 内置命令：`exit` / `quit` 退出，`clear` 清空环境。
 
 ## 📦 编译成独立可执行文件
 
-`picox build` 把 `.px` 脚本**嵌入解释器副本**，产出一个单文件可执行程序 —— 双击就能跑，不需要源文件、不需要装 PicoX。
+`chronos build` 把 `.px` 脚本**嵌入解释器副本**，产出一个单文件可执行程序 —— 双击就能跑，不需要源文件、不需要装 Chronos。
 
 ```bash
-$ picox build examples/hello.px
+$ chronos build examples/hello.px
 ✓ 已编译: hello
   源文件: examples/hello.px (2518 字节)
-  产物:   /home/me/picox/hello (2737564 字节)
+  产物:   /home/me/chronos/hello (2737564 字节)
   运行:   ./hello
 
 $ ./hello
-Hello, PicoX v0.1
+Hello, Chronos v0.1
 Is awesome: true
 ...
 ```
@@ -437,7 +437,7 @@ Is awesome: true
 自定义输出名：
 
 ```bash
-picox build app.px -o /usr/local/bin/app
+chronos build app.px -o /usr/local/bin/app
 ```
 
 **实现原理**：在解释器二进制尾部追加 `[payload][8字节长度][16字节 magic]`，启动时检测到 magic 就直接执行内嵌脚本。
@@ -445,8 +445,8 @@ picox build app.px -o /usr/local/bin/app
 **默认开启混淆加密**（AES-256-CTR，每份产物随机盐）：
 
 ```bash
-picox build app.px              # 默认：加密混淆
-picox build app.px --plain      # 关闭加密，嵌入明文（便于调试）
+chronos build app.px              # 默认：加密混淆
+chronos build app.px --plain      # 关闭加密，嵌入明文（便于调试）
 ```
 
 - 加密后源码在二进制里是密文，`strings` / `hexdump` / `grep -a` 都读不出脚本内容
@@ -474,8 +474,8 @@ picox build app.px --plain      # 关闭加密，嵌入明文（便于调试）
 | [`i18n.px`](examples/i18n.px) | 中文变量/类/管道/回滚 全方位国际化测试 |
 
 ```bash
-picox -run examples/hello.px
-picox -run examples/oop.px
+chronos -run examples/hello.px
+chronos -run examples/oop.px
 ```
 
 ---
@@ -485,7 +485,7 @@ picox -run examples/oop.px
 经典的「词法 → 语法 → 树 → 求值」四段式，无第三方依赖，纯标准库实现。
 
 ```
-picox/                          ~6.5k 行 Go 代码
+chronos/                          ~6.5k 行 Go 代码
 ├── main.go            164 行    CLI 入口（run / repl / version / help）
 ├── token/             143 行    词法标记定义
 ├── lexer/             647 行    词法分析器（含转义、注释、多字符运算符）
@@ -534,10 +534,10 @@ picox/                          ~6.5k 行 Go 代码
 欢迎 Issue 和 PR。本地开发：
 
 ```bash
-git clone git@github.com:polear234/picox.git
-cd picox
+git clone git@github.com:polear234/chronos.git
+cd chronos
 go test ./...        # 跑全部测试（词法 / 语法 / 求值）
-go build -o picox .  # 编译
+go build -o chronos .  # 编译
 ```
 
 提交前请确保 `go vet ./...` 和 `go test ./...` 通过。
@@ -546,7 +546,7 @@ go build -o picox .  # 编译
 
 ## 📄 许可证
 
-[MIT License](LICENSE) © 2026 PicoX Contributors
+[MIT License](LICENSE) © 2026 Chronos Contributors
 
 ---
 
