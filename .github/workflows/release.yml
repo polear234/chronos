@@ -70,24 +70,44 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+
       - name: Checksums
         run: |
-          cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Notes
+        run: |
+          {
+            printf 'PicoX %s\n\n' "$GITHUB_REF_NAME"
+            printf '用 Go 手写的轻量脚本语言：变量时间旅行 `rollback()`、`withSnapshot`、管道 `|>`、数组方法链、类继承、模式匹配、import 模块。\n\n'
+            printf '### 下载\n\n'
+            printf '| 平台 | 文件 |\n|---|---|\n'
+            for f in dist/picox-*; do
+              case "$f" in *SHA256*) continue;; esac
+              printf '| %s | `%s` |\n' "$(basename "$f")" "$(basename "$f")"
+            done
+            printf '\n### 快速开始\n\n'
+            printf '```bash\n'
+            printf 'chmod +x picox-linux-arm64\n'
+            printf './picox-linux-arm64 run examples/hello.px\n'
+            printf './picox-linux-arm64          # 进入 REPL\n'
+            printf '```\n\n'
+            printf '单文件静态二进制，无运行时依赖。校验和见 `SHA256SUMS.txt`。\n'
+          } > NOTES.md
+          cat NOTES.md
+
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "PicoX $GITHUB_REF_NAME" \
-            --notes "PicoX 语言 $GITHUB_REF_NAME 发布。
-
-内置多平台单文件二进制（linux/darwin/windows，amd64/arm64），解压即用，无运行时依赖。
-
-快速开始：
-\`\`\`bash
-chmod +x picox-linux-arm64
-./picox-linux-arm64 run examples/hello.px
-./picox-linux-arm64          # 进入 REPL
-\`\`\`" \
-            2>/dev/null || gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --notes-file NOTES.md
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "PicoX $GITHUB_REF_NAME" \
+              --notes-file NOTES.md
+          fi
