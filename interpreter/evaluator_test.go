@@ -851,7 +851,7 @@ func TestImportModule(t *testing.T) {
 	dir := t.TempDir()
 
 	// 写模块文件
-	modPath := filepath.Join(dir, "math.px")
+	modPath := filepath.Join(dir, "math.chr")
 	modSrc := `
 let PI = 3.14159
 fn square(x) { return x * x }
@@ -882,7 +882,7 @@ m.square(5) + m.add(1, 2)`
 
 func TestImportDefaultAlias(t *testing.T) {
 	dir := t.TempDir()
-	modPath := filepath.Join(dir, "util.px")
+	modPath := filepath.Join(dir, "util.chr")
 	modSrc := `fn double(x) { return x * 2 }`
 	if err := os.WriteFile(modPath, []byte(modSrc), 0644); err != nil {
 		t.Fatalf("write module: %v", err)
@@ -904,7 +904,7 @@ func TestImportDefaultAlias(t *testing.T) {
 
 func TestImportModuleAccessString(t *testing.T) {
 	dir := t.TempDir()
-	modPath := filepath.Join(dir, "msg.px")
+	modPath := filepath.Join(dir, "msg.chr")
 	modSrc := `let greeting = "hi"`
 	if err := os.WriteFile(modPath, []byte(modSrc), 0644); err != nil {
 		t.Fatalf("write module: %v", err)
@@ -928,9 +928,9 @@ m.greeting`
 
 func TestCircularImport(t *testing.T) {
 	dir := t.TempDir()
-	// a.px 导入 b.px，b.px 导入 a.px → 循环
-	os.WriteFile(filepath.Join(dir, "a.px"), []byte(`import "b"`), 0644)
-	os.WriteFile(filepath.Join(dir, "b.px"), []byte(`import "a"`), 0644)
+	// a.chr 导入 b.chr，b.chr 导入 a.chr → 循环
+	os.WriteFile(filepath.Join(dir, "a.chr"), []byte(`import "b"`), 0644)
+	os.WriteFile(filepath.Join(dir, "b.chr"), []byte(`import "a"`), 0644)
 
 	mainSrc := `import "a" as a`
 	l := lexer.New(mainSrc)
@@ -1016,4 +1016,71 @@ map(1, 2)`
 	if s, ok := evaluated.(*object.String); !ok || s.Value != "custom" {
 		t.Fatalf("expected 'custom', got %T (%+v)", evaluated, evaluated)
 	}
+}
+
+func TestForElse(t *testing.T) {
+	// 自然结束：else 执行，标记置 1
+	t.Run("natural", func(t *testing.T) {
+		input := `
+let flag = 0
+for x in [1, 2] {
+} else {
+    flag = 1
+}
+flag`
+		testIntegerObject(t, testEval(t, input), 1)
+	})
+	// break 跳过 else：flag 保持 0
+	t.Run("break", func(t *testing.T) {
+		input := `
+let flag = 0
+for x in [1, 2, 3] {
+    if x == 2 { break }
+} else {
+    flag = 1
+}
+flag`
+		testIntegerObject(t, testEval(t, input), 0)
+	})
+	// 空迭代：else 执行
+	t.Run("empty", func(t *testing.T) {
+		input := `
+let flag = 0
+for x in [] {
+} else {
+    flag = 1
+}
+flag`
+		testIntegerObject(t, testEval(t, input), 1)
+	})
+}
+
+func TestWhileElse(t *testing.T) {
+	// 自然结束：else 执行
+	t.Run("natural", func(t *testing.T) {
+		input := `
+let i = 0
+let flag = 0
+while i < 2 {
+    i = i + 1
+} else {
+    flag = 1
+}
+flag`
+		testIntegerObject(t, testEval(t, input), 1)
+	})
+	// break 跳过 else：flag 保持 0
+	t.Run("break", func(t *testing.T) {
+		input := `
+let i = 0
+let flag = 0
+while i < 5 {
+    i = i + 1
+    if i == 2 { break }
+} else {
+    flag = 1
+}
+flag`
+		testIntegerObject(t, testEval(t, input), 0)
+	})
 }

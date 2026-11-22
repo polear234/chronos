@@ -171,9 +171,10 @@ func (ie *IfExpression) String() string {
 
 // WhileExpression while 循环
 type WhileExpression struct {
-	Token     token.Token
-	Condition Expression
-	Body      *BlockStatement
+	Token       token.Token
+	Condition   Expression
+	Body        *BlockStatement
+	Alternative *BlockStatement
 }
 
 func (we *WhileExpression) expressionNode()      {}
@@ -184,15 +185,20 @@ func (we *WhileExpression) String() string {
 	out.WriteString(we.Condition.String())
 	out.WriteString(" ")
 	out.WriteString(we.Body.String())
+	if we.Alternative != nil {
+		out.WriteString(" else ")
+		out.WriteString(we.Alternative.String())
+	}
 	return out.String()
 }
 
 // ForExpression for 循环
 type ForExpression struct {
-	Token     token.Token
-	Variable  *Identifier
-	Iterable  Expression
-	Body      *BlockStatement
+	Token       token.Token
+	Variable    *Identifier
+	Iterable    Expression
+	Body        *BlockStatement
+	Alternative *BlockStatement
 }
 
 func (fe *ForExpression) expressionNode()      {}
@@ -205,6 +211,10 @@ func (fe *ForExpression) String() string {
 	out.WriteString(fe.Iterable.String())
 	out.WriteString(" ")
 	out.WriteString(fe.Body.String())
+	if fe.Alternative != nil {
+		out.WriteString(" else ")
+		out.WriteString(fe.Alternative.String())
+	}
 	return out.String()
 }
 

@@ -54,7 +54,7 @@ for ARCH in amd64 arm64; do
     cp "$EXE" "$TMP/chronos.exe"
     cp "$HERE/README.md" "$HERE/LICENSE" "$TMP/" 2>/dev/null || true
     mkdir -p "$TMP/examples"
-    cp "$HERE"/examples/*.px "$TMP/examples/" 2>/dev/null || true
+    cp "$HERE"/examples/*.chr "$TMP/examples/" 2>/dev/null || true
     ( cd "$TMP" && zip -q -r "$OUT/chronos-$VERSION-windows-$ARCH.zip" . )
     rm -rf "$TMP"
 done

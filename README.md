@@ -109,7 +109,7 @@ let evens = [1,2,3,4,5]
 <summary>技术细节：APK 是怎么生成的</summary>
 
 1. App 内预置一个「模板 APK」（裸的 WebView 宿主）
-2. 打包时读模板，用 `ZipOutputStream` 重写：剔除旧签名、注入 `assets/script.px`
+2. 打包时读模板，用 `ZipOutputStream` 重写：剔除旧签名、注入 `assets/script.chr`
 3. 关键约束：Android 11+ 要求 `resources.arsc` **不压缩且 4 字节对齐** —— 通过「首个条目 + STORED + 无 extra」让它天然落在偏移 44
 4. 用内置 keystore + `apksig` 重新签名（v1 + v2）
 5. 自定义包名：解析二进制 AXML 字符串池，替换 `package` 属性的字符串（支持 UTF-16 / UTF-8 两种编码）
@@ -170,7 +170,7 @@ go build -o chronos .      # 需要 Go 1.21+，零第三方依赖
 ## 🚀 第一个程序
 
 ```chronos
-// hello.px
+// hello.chr
 print("Hello, Chronos!")
 
 fn fib(n) {
@@ -181,7 +181,7 @@ print("fib(10) = " + str(fib(10)))   // 55
 ```
 
 ```bash
-chronos run hello.px
+chronos run hello.chr
 # Hello, Chronos!
 # fib(10) = 55
 ```
@@ -320,7 +320,7 @@ s = 42          // ✗ 报错：数字不会隐式转成字符串
 ### 模块
 
 ```chronos
-import "math_utils.px" as math
+import "math_utils.chr" as math
 print(math.add(1, 2))
 ```
 
@@ -371,10 +371,10 @@ h.length()  h.keys()  h.values()  h.has("k")
 ## 💻 命令行
 
 ```bash
-chronos run app.px          # 运行脚本
-chronos build app.px        # 编译成独立可执行文件
-chronos build app.px -p     # 明文模式（默认加密混淆）
-chronos build app.px -o out # 指定输出名
+chronos run app.chr          # 运行脚本
+chronos build app.chr        # 编译成独立可执行文件
+chronos build app.chr -p     # 明文模式（默认加密混淆）
+chronos build app.chr -o out # 指定输出名
 chronos repl                # 交互式 REPL
 chronos version             # 查看版本
 chronos help                # 帮助
@@ -383,7 +383,7 @@ chronos help                # 帮助
 ### 编译产物
 
 ```bash
-chronos build examples/hello.px -o hello
+chronos build examples/hello.chr -o hello
 ./hello        # 独立运行，不依赖源码
 ```
 

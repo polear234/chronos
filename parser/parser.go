@@ -454,7 +454,20 @@ func (p *Parser) parseWhileExpression() ast.Expression {
 		return nil
 	}
 	exp.Body = p.parseBlockStatement()
+	exp.Alternative = p.parseLoopAlternative()
 	return exp
+}
+
+// parseLoopAlternative 解析循环体后的可选 else 分支
+func (p *Parser) parseLoopAlternative() *ast.BlockStatement {
+	if !p.peekTokenIs(token.ELSE) {
+		return nil
+	}
+	p.nextToken() // curToken: } → else
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+	return p.parseBlockStatement()
 }
 
 func (p *Parser) parseForExpression() ast.Expression {
@@ -488,6 +501,7 @@ func (p *Parser) parseForExpression() ast.Expression {
 		return nil
 	}
 	exp.Body = p.parseBlockStatement()
+	exp.Alternative = p.parseLoopAlternative()
 	return exp
 }
 

@@ -146,5 +146,5 @@ fi
 echo ""
 echo "快速开始:"
 echo "  chronos                   # 启动 REPL"
-echo "  chronos run hello.px      # 运行脚本"
-echo "  chronos build app.px      # 打包成单文件可执行"
+echo "  chronos run hello.chr      # 运行脚本"
+echo "  chronos build app.chr      # 打包成单文件可执行"

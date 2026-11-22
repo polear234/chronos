@@ -140,4 +140,4 @@ if (Get-Command chronos -ErrorAction SilentlyContinue) {
 Write-Host ""
 Write-Host "快速开始:"
 Write-Host "  chronos                  # 启动 REPL"
-Write-Host "  chronos -run hello.px    # 运行脚本"
+Write-Host "  chronos -run hello.chr    # 运行脚本"

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"chronos/interpreter"
 	"chronos/lexer"
@@ -69,8 +70,8 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: chronos run [options] <file.px>")
-		fmt.Fprintln(stderr, "       chronos -run <file.px>")
+		fmt.Fprintln(stderr, "Usage: chronos run [options] <file.chr>")
+		fmt.Fprintln(stderr, "       chronos -run <file.chr>")
 		fmt.Fprintln(stderr, "\nOptions:")
 		fs.PrintDefaults()
 	}
@@ -78,7 +79,7 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	files := fs.Args()
 	if len(files) == 0 {
-		fmt.Fprintln(stderr, "error: no input file (use 'chronos run file.px', or '-' to read from stdin)")
+		fmt.Fprintln(stderr, "error: no input file (use 'chronos run file.chr', or '-' to read from stdin)")
 		return 2
 	}
 
@@ -99,9 +100,14 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return exitCode
 }
 
-// isScriptArg 判断参数是否像脚本路径（含 .px 或路径分隔符）
+// isScriptFile 判断文件名是否以受支持的脚本后缀结尾（.chr 或旧版 .px）
+func isScriptFile(name string) bool {
+	return strings.HasSuffix(name, ".chr") || strings.HasSuffix(name, ".px")
+}
+
+// isScriptArg 判断参数是否像脚本路径（含脚本后缀或路径分隔符）
 func isScriptArg(arg string) bool {
-	if len(arg) >= 3 && arg[len(arg)-3:] == ".px" {
+	if isScriptFile(arg) {
 		return true
 	}
 	for _, r := range arg {
@@ -117,19 +123,19 @@ func printUsage(w io.Writer) {
 
 Usage:
   chronos                     Start the interactive REPL
-  chronos run <file.px>       Run a script file
-  chronos -run <file.px>      Run a script file (shorthand)
-  chronos build <file.px>     Compile a script into a standalone executable
-  chronos build <file.px> -o <name>   Compile with a custom output name
+  chronos run <file.chr>       Run a script file
+  chronos -run <file.chr>      Run a script file (shorthand)
+  chronos build <file.chr>     Compile a script into a standalone executable
+  chronos build <file.chr> -o <name>   Compile with a custom output name
   chronos run -               Read and run source from stdin
   chronos version             Print version
   chronos help                Show this help
 
 Examples:
   chronos
-  chronos run examples/hello.px
-  chronos build examples/hello.px        # 产出 ./hello 可执行文件
-  chronos build app.px -o /usr/local/bin/app
+  chronos run examples/hello.chr
+  chronos build examples/hello.chr        # 产出 ./hello 可执行文件
+  chronos build app.chr -o /usr/local/bin/app
   echo 'print("hi")' | chronos run -
 `, version)
 }

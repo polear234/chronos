@@ -46,12 +46,12 @@ install: build
 
 # 运行示例
 hello: build
-	./$(BINARY) run examples/hello.px
+	./$(BINARY) run examples/hello.chr
 
 fib: build
-	./$(BINARY) run examples/fibonacci.px
+	./$(BINARY) run examples/fibonacci.chr
 
 oop: build
-	./$(BINARY) run examples/oop.px
+	./$(BINARY) run examples/oop.chr
 
 .PHONY: hello fib oop

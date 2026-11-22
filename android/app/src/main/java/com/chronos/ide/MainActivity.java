@@ -48,7 +48,7 @@ import java.util.zip.ZipOutputStream;
  * Chronos IDE —— WebView + Go WASM 运行时。
  *
  * JS 桥（ChronosBridge）：
- *   pickFile()                    导入 .px
+ *   pickFile()                    导入脚本（.chr / 旧版 .px）
  *   saveFile(name, text)          导出源码
  *   compileApk(name, script)      把脚本打包成独立 APK（模板 + 重签名）
  */
@@ -273,10 +273,10 @@ public class MainActivity extends Activity {
                         sb.append(b64).append("\n");
                         sb.append("__CHRONOS_BIN__\n");
                         sb.append("chmod +x \"$WORK/chronos\"\n");
-                        sb.append("cat > \"$WORK/app.px\" <<'__CHRONOS_SRC__'\n");
+                        sb.append("cat > \"$WORK/app.chr\" <<'__CHRONOS_SRC__'\n");
                         sb.append(script).append("\n");
                         sb.append("__CHRONOS_SRC__\n");
-                        sb.append("\"$WORK/chronos\" -run \"$WORK/app.px\"\n");
+                        sb.append("\"$WORK/chronos\" -run \"$WORK/app.chr\"\n");
 
                         File out = new File(getCacheDir(), "app.sh");
                         FileOutputStream fos = new FileOutputStream(out);
@@ -308,7 +308,7 @@ public class MainActivity extends Activity {
     // ---------------- APK 打包 ----------------
 
     /**
-     * 复制模板 APK，替换 assets/script.px，并剔除旧的签名文件。
+     * 复制模板 APK，替换 assets/script.chr（兼容旧版 script.px），并剔除旧的签名文件。
      *
      * 关键：Android 11+ 要求 targetSdk>=30 的 APK 中 resources.arsc
      * 必须是 STORED（不压缩）且 4 字节对齐。做法是把它作为第一个条目、
@@ -344,7 +344,7 @@ public class MainActivity extends Activity {
                 entries.put(name, data);
             }
         }
-        entries.put("assets/script.px", script.getBytes(StandardCharsets.UTF_8));
+        entries.put("assets/script.chr", script.getBytes(StandardCharsets.UTF_8));
 
         // 2) 写出：resources.arsc 优先且 STORED
         try (ZipOutputStream zout = new ZipOutputStream(
@@ -433,7 +433,9 @@ public class MainActivity extends Activity {
             return "chronos-app.apk";
         }
         String n = base.trim();
-        if (n.endsWith(".px")) {
+        if (n.endsWith(".chr")) {
+            n = n.substring(0, n.length() - 4);
+        } else if (n.endsWith(".px")) {
             n = n.substring(0, n.length() - 3);
         }
         if (!n.endsWith(".apk")) {
@@ -473,7 +475,8 @@ public class MainActivity extends Activity {
     private static String shellName(String base) {
         if (base == null || base.trim().isEmpty()) return "app.sh";
         String n = base.trim();
-        if (n.endsWith(".px")) n = n.substring(0, n.length() - 3);
+        if (n.endsWith(".chr")) n = n.substring(0, n.length() - 4);
+        else if (n.endsWith(".px")) n = n.substring(0, n.length() - 3);
         if (!n.endsWith(".sh")) n = n + ".sh";
         return n;
     }
@@ -608,7 +611,7 @@ public class MainActivity extends Activity {
         if (name == null) {
             name = uri.getLastPathSegment();
         }
-        return name == null ? "untitled.px" : name;
+        return name == null ? "untitled.chr" : name;
     }
 
     private void postJs(String fn, boolean ok, String msg) {

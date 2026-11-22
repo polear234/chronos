@@ -117,7 +117,7 @@
 
 <main>
   <section class="pane">
-    <div class="pane-bar"><span class="dot"></span><span id="fname">main.px</span> <span class="spacer"></span><span id="lines">0 行</span></div>
+    <div class="pane-bar"><span class="dot"></span><span id="fname">main.chr</span> <span class="spacer"></span><span id="lines">0 行</span></div>
     <textarea id="code" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="在这里写 Chronos 代码…"></textarea>
   </section>
   <section class="pane">
@@ -218,10 +218,10 @@ print("偶数: " + str(evens))`
 };
 
 // ---- 当前文件名 ----
-let curName = localStorage.getItem('chronos.name') || 'main.px';
+let curName = localStorage.getItem('chronos.name') || 'main.chr';
 const fnameEl = document.getElementById('fname');
 function setFileName(n){
-  curName = n || 'main.px';
+  curName = n || 'main.chr';
   fnameEl.textContent = curName;
   localStorage.setItem('chronos.name', curName);
 }
@@ -245,7 +245,7 @@ document.getElementById('importBtn').addEventListener('click', () => {
 });
 
 document.getElementById('exportBtn').addEventListener('click', () => {
-  const name = curName.endsWith('.px') ? curName : (curName + '.px');
+  const name = (curName.endsWith('.chr') || curName.endsWith('.px')) ? curName : (curName + '.chr');
   if (bridge && bridge.saveFile) {
     bridge.saveFile(name, codeEl.value);
   } else {
@@ -306,20 +306,22 @@ window.onFileImported = function(name, content) {
 const saved = localStorage.getItem('chronos.code');
 codeEl.value = saved || SAMPLES.hello;
 
-// ===== 编译产物检测：有 assets/script.px 就进入「运行模式」 =====
+// ===== 编译产物检测：有 assets/script.chr（或旧版 script.px）就进入「运行模式」 =====
 let pendingRuntime = null;
 (async () => {
-  try {
-    const r = await fetch('script.px');
-    if (r.ok) {
-      const t = await r.text();
-      if (t && t.trim().length > 0) {
-        pendingRuntime = t;
-        enterRuntimeMode(t);
-        return;
+  for (const name of ['script.chr', 'script.px']) {
+    try {
+      const r = await fetch(name);
+      if (r.ok) {
+        const t = await r.text();
+        if (t && t.trim().length > 0) {
+          pendingRuntime = t;
+          enterRuntimeMode(t);
+          return;
+        }
       }
-    }
-  } catch (e) { /* 非编译产物 */ }
+    } catch (e) { /* 非编译产物 */ }
+  }
 })();
 
 function enterRuntimeMode(code) {
@@ -421,14 +423,117 @@ document.getElementById('clearCode').addEventListener('click', () => {
   outEl.innerHTML = '<span class="dim">（已清空）</span>';
 });
 
-// Tab 插入两个空格
+// ===== 编辑器增强：自动缩进 / 括号补全 / 智能换行 =====
+const INDENT = '  '; // 两级缩进
+
+function setCode(value, caret) {
+  codeEl.value = value;
+  codeEl.selectionStart = codeEl.selectionEnd = caret;
+  localStorage.setItem('chronos.code', value);
+  updateLines();
+}
+
+// 当前行行首到光标之间的文本
+function linePrefixBefore(pos) {
+  const ls = codeEl.value.lastIndexOf('\n', pos - 1) + 1;
+  return codeEl.value.slice(ls, pos);
+}
+
 codeEl.addEventListener('keydown', (e) => {
+  const s = codeEl.selectionStart, en = codeEl.selectionEnd;
+  const v = codeEl.value;
+  const selected = s !== en;
+
+  // ---- Tab：选中多行整体缩进；Shift+Tab 反缩进；否则插入缩进 ----
   if (e.key === 'Tab') {
     e.preventDefault();
-    const s = codeEl.selectionStart, en = codeEl.selectionEnd;
-    codeEl.value = codeEl.value.slice(0, s) + '  ' + codeEl.value.slice(en);
-    codeEl.selectionStart = codeEl.selectionEnd = s + 2;
-    localStorage.setItem('chronos.code', codeEl.value);
+    if (selected) {
+      const ls = v.lastIndexOf('\n', s - 1) + 1;
+      const le = v.indexOf('\n', en);
+      const end = le === -1 ? v.length : le;
+      const block = v.slice(ls, end);
+      const lines = block.split('\n');
+      if (e.shiftKey) {
+        const shifted = lines.map(line => line.startsWith(INDENT) ? line.slice(INDENT.length) : line.replace(/^\t/, '')).join('\n');
+        setCode(v.slice(0, ls) + shifted + v.slice(end), s);
+      } else {
+        const shifted = lines.map(line => INDENT + line).join('\n');
+        setCode(v.slice(0, ls) + shifted + v.slice(end), s + INDENT.length);
+      }
+    } else {
+      if (e.shiftKey) {
+        // 行首反缩进
+        const ls = v.lastIndexOf('\n', s - 1) + 1;
+        const line = v.slice(ls, s);
+        if (line.startsWith(INDENT)) {
+          setCode(v.slice(0, ls) + line.slice(INDENT.length) + v.slice(s), Math.max(ls, s - INDENT.length));
+        }
+      } else {
+        setCode(v.slice(0, s) + INDENT + v.slice(en), s + INDENT.length);
+      }
+    }
+    return;
+  }
+
+  // ---- 换行：保持缩进，{ 后多缩进一级，} 前回退一级 ----
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const prefix = linePrefixBefore(s);
+    let indent = (prefix.match(/^[ \t]*/) || [''])[0];
+    const trimmed = prefix.trimEnd();
+    // 行尾是 { [ ( 或 : —— 增加一级
+    if (/[{[(:]$/.test(trimmed)) indent += INDENT;
+    // 光标后紧跟 } ] ) —— 多插入一个缩进并把闭合符顶到下一行
+    const nextCh = v.slice(en, en + 1);
+    let extra = '';
+    if ((nextCh === '}' || nextCh === ']' || nextCh === ')') && indent.endsWith(INDENT)) {
+      extra = '\n' + indent.slice(0, -INDENT.length);
+      const inserted = '\n' + indent + extra;
+      setCode(v.slice(0, s) + inserted + v.slice(en), s + 1 + indent.length);
+      return;
+    }
+    setCode(v.slice(0, s) + '\n' + indent + v.slice(en), s + 1 + indent.length);
+    return;
+  }
+
+  // ---- 退格：光标前有成对括号/引号时，一次删两个 ----
+  if (e.key === 'Backspace' && !selected) {
+    const pairs = { '}': '{', ']': '[', ')': '(', '"': '"', "'": "'" };
+    const before = v.slice(s - 1, s);
+    const after = v.slice(s, s + 1);
+    if (pairs[after] === before) {
+      e.preventDefault();
+      setCode(v.slice(0, s - 1) + v.slice(s + 1), s - 1);
+      return;
+    }
+  }
+
+  // ---- 输入开括号/引号：自动补全，光标置于中间 ----
+  const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
+  const close = pairs[e.key];
+  if (close && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    // 选中文本时用括号包起来
+    if (selected) {
+      const sel = v.slice(s, en);
+      setCode(v.slice(0, s) + e.key + sel + close + v.slice(en), en + close.length + 1);
+    } else {
+      // 光标后已是对应闭合符就不重复补
+      if (v.slice(s, s + 1) === close) {
+        setCode(v, s + 1);
+      } else {
+        setCode(v.slice(0, s) + e.key + close + v.slice(en), s + 1);
+      }
+    }
+    return;
+  }
+
+  // ---- 输入闭合符：光标后已有该符号则跳过，不重复 ----
+  const openers = { ')': '(', ']': '[', '}': '{', '"': '"', "'": "'" };
+  if (openers[e.key] && !selected && v.slice(s, s + 1) === e.key) {
+    e.preventDefault();
+    setCode(v, s + 1);
+    return;
   }
 });
 </script>

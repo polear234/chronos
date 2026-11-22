@@ -289,13 +289,16 @@ func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Obje
 }
 
 func evalWhileExpression(we *ast.WhileExpression, env *object.Environment) object.Object {
-loop:
 	for {
 		condition := Eval(we.Condition, env)
 		if isError(condition) {
 			return condition
 		}
 		if !isTruthy(condition) {
+			// 自然结束（含零次循环）：执行 else
+			if we.Alternative != nil {
+				return Eval(we.Alternative, env)
+			}
 			return NIL
 		}
 		result := Eval(we.Body, env)
@@ -304,14 +307,14 @@ loop:
 		}
 		switch result.(type) {
 		case *object.Break:
-			break loop
+			// break 跳过 else
+			return NIL
 		case *object.Continue:
 			continue
 		case *object.ReturnValue:
 			return result
 		}
 	}
-	return NIL
 }
 
 func evalForExpression(fe *ast.ForExpression, env *object.Environment) object.Object {
@@ -347,12 +350,17 @@ func evalForExpression(fe *ast.ForExpression, env *object.Environment) object.Ob
 		}
 		switch result.(type) {
 		case *object.Break:
+			// break 跳过 else
 			return NIL
 		case *object.Continue:
 			continue
 		case *object.ReturnValue:
 			return result
 		}
+	}
+	// 自然结束（含空迭代）：执行 else
+	if fe.Alternative != nil {
+		return Eval(fe.Alternative, env)
 	}
 	return NIL
 }
@@ -1445,15 +1453,17 @@ func evalImportStatement(is *ast.ImportStatement, env *object.Environment) objec
 }
 
 // resolveModulePath 把 import 路径解析成实际文件路径
+// 优先 .chr（新后缀），兼容旧版 .px。
 func resolveModulePath(modPath, baseDir string) string {
 	// 已是绝对路径
 	if filepath.IsAbs(modPath) {
 		if fileExists(modPath) {
 			return modPath
 		}
-		// 尝试补 .px 扩展名
-		if fileExists(modPath + ".px") {
-			return modPath + ".px"
+		for _, ext := range []string{".chr", ".px"} {
+			if fileExists(modPath + ext) {
+				return modPath + ext
+			}
 		}
 		return ""
 	}
@@ -1463,10 +1473,12 @@ func resolveModulePath(modPath, baseDir string) string {
 	if dir == "" {
 		dir = "."
 	}
-	candidates := []string{
-		filepath.Join(dir, modPath),
-		filepath.Join(dir, modPath+".px"),
-		filepath.Join(dir, modPath, "index.px"),
+	candidates := []string{filepath.Join(dir, modPath)}
+	for _, ext := range []string{".chr", ".px"} {
+		candidates = append(candidates,
+			filepath.Join(dir, modPath+ext),
+			filepath.Join(dir, modPath, "index"+ext),
+		)
 	}
 	for _, c := range candidates {
 		if fileExists(c) {

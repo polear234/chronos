@@ -329,7 +329,7 @@ jobs:
             printf '**Windows**：下载 `.msi` 双击安装（自动加入 PATH），或 `.zip` 解压即用。\n\n'
             printf '```bash\n'
             printf 'chmod +x chronos-linux-arm64\n'
-            printf './chronos-linux-arm64 run examples/hello.px\n'
+            printf './chronos-linux-arm64 run examples/hello.chr\n'
             printf './chronos-linux-arm64          # 进入 REPL\n'
             printf '```\n\n'
             printf '单文件静态二进制，无运行时依赖。校验和见 `SHA256SUMS.txt`。\n'
