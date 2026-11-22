@@ -11,8 +11,30 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SDK="${ANDROID_HOME:-$HOME/Android/Sdk}"
-BT="$SDK/build-tools/34.0.0"
-PLAT="$SDK/platforms/android-34/android.jar"
+# build-tools：优先 34.0.0（D8 处理 apksig 已验证可用），否则取最新
+if [ -z "${BT:-}" ]; then
+    if [ -d "$SDK/build-tools/34.0.0" ]; then
+        BT="$SDK/build-tools/34.0.0"
+    else
+        BT="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
+    fi
+fi
+PLAT="${PLAT:-$(ls "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1)}"
+
+if [ -z "$BT" ] || [ ! -d "$BT" ]; then
+    echo "错误：找不到 build-tools（SDK=$SDK）" >&2
+    ls "$SDK/build-tools/" 2>/dev/null || echo "  build-tools 目录不存在" >&2
+    exit 1
+fi
+if [ -z "$PLAT" ] || [ ! -f "$PLAT" ]; then
+    echo "错误：找不到 android.jar（SDK=$SDK）" >&2
+    ls "$SDK/platforms/" 2>/dev/null || echo "  platforms 目录不存在" >&2
+    exit 1
+fi
+
+echo "  SDK: $SDK"
+echo "  build-tools: $(basename "$BT")"
+echo "  platform: $(basename "$(dirname "$PLAT")")"
 APKSIG="$BT/lib/apksigner.jar"
 SRC="$HERE/app/src/main"
 BUILD=/tmp/abuild
@@ -63,8 +85,26 @@ javac -source 8 -target 8 -bootclasspath "$PLAT" -classpath "$PLAT:$APKSIG" \
 
 echo "==> 4/6 转 dex（含 apksig 签名库）"
 find "$BUILD/classes" -name "*.class" > "$BUILD/classes.txt"
+
+# 清理 apksigner.jar：剔除 META-INF 签名字段，避免 D8 内部 NPE
+D8_JAR="$APKSIG"
+if [ -f "$APKSIG" ]; then
+    CLEAN="$BUILD/apksig-clean.jar"
+    TMPJ="$(mktemp -d)"
+    if (cd "$TMPJ" && unzip -q "$APKSIG" 2>/dev/null); then
+        rm -rf "$TMPJ/META-INF"
+        find "$TMPJ" -name "module-info.class" -delete 2>/dev/null || true
+        find "$TMPJ" -path "*/META-INF/versions/*" -delete 2>/dev/null || true
+        if (cd "$TMPJ" && zip -q -r "$CLEAN" . 2>/dev/null) && [ -f "$CLEAN" ]; then
+            D8_JAR="$CLEAN"
+            echo "    已清理 apksig jar（剔除 META-INF）"
+        fi
+    fi
+    rm -rf "$TMPJ"
+fi
+
 "$BT/d8" --lib "$PLAT" --min-api 26 --output "$BUILD/dex" \
-    @"$BUILD/classes.txt" "$APKSIG"
+    @"$BUILD/classes.txt" "$D8_JAR"
 
 echo "==> 5/6 组装 APK"
 python3 - "$BUILD" "$SRC/assets" "$BARE" <<'PY'

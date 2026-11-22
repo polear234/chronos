@@ -208,9 +208,33 @@ jobs:
         run: |
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" "platforms;android-34" >/dev/null 2>&1 || true
-          ls "$SDK/build-tools/" "$SDK/platforms/" || true
+
+          echo "::group::现有 SDK 组件"
+          ls "$SDK" 2>/dev/null || echo "SDK 目录不存在"
+          ls "$SDK/build-tools/" 2>/dev/null || echo "无 build-tools"
+          ls "$SDK/platforms/" 2>/dev/null || echo "无 platforms"
+          echo "::endgroup::"
+
+          SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)"
+          echo "sdkmanager=$SDKMANAGER"
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" --install "build-tools;34.0.0" "platforms;android-34" 2>&1 | tail -10 || true
+          fi
+
+          echo "::group::安装后"
+          ls "$SDK/build-tools/" 2>/dev/null || echo "无 build-tools"
+          ls "$SDK/platforms/" 2>/dev/null || echo "无 platforms"
+          echo "::endgroup::"
+
+          # 必须装到 34.0.0（D8 处理 apksig 已验证可用；更高版本有内部 NPE）
+          if [ ! -d "$SDK/build-tools/34.0.0" ]; then
+            echo "::error::build-tools 34.0.0 未安装成功（更高版本的 D8 无法处理 apksig）"
+            exit 1
+          fi
+          if [ -z "$(ls "$SDK"/platforms/android-*/android.jar 2>/dev/null)" ]; then
+            echo "::error::platform android.jar 缺失"; exit 1
+          fi
 
       - name: Restore signing keystore
         env:
@@ -249,7 +273,7 @@ jobs:
 
   # ── 6. 汇总发布 ─────────────────────────────────────────
   release:
-    needs: [ build, package-windows, package-deb ]
+    needs: [ build, package-windows, package-deb, package-android ]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
