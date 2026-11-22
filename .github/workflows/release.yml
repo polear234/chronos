@@ -148,6 +148,8 @@ jobs:
       matrix:
         arch: [ amd64, arm64 ]
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: bin-linux-${{ matrix.arch }}
