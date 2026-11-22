@@ -28,7 +28,9 @@
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLDIR" Name="Chronos">
           <Component Id="ChronosExe" Guid="*" Win64="yes">
-            <File Id="ChronosExeFile" Source="$(var.source)" KeyPath="yes" />
+            <!-- Name 必须固定为 chronos.exe：源文件叫 chronos-windows-amd64.exe，
+                 不指定的话装完就是那个名字，PATH 里敲 chronos 会找不到 -->
+            <File Id="ChronosExeFile" Source="$(var.source)" Name="chronos.exe" KeyPath="yes" />
             <!-- 安装时把目录追加到系统 PATH，卸载时自动移除 -->
             <Environment Id="PathEnv"
                          Name="PATH"
