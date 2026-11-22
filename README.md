@@ -265,6 +265,21 @@ let d = new Dog("Buddy")
 print(d.speak())   // "Buddy barks!"
 ```
 
+### 类型转换
+
+```chronos
+// C++ 风格强制转换
+let n = static_cast<int>("42")      // 42
+let f = static_cast<float>(3)       // 3.0
+let s = static_cast<str>(100)       // "100"
+let t = static_cast<int>(3.99)      // 3（截断）
+
+// 也支持函数式写法（完全等价）
+let m = int("42")
+```
+
+类型别名：`int`/`integer`/`int64`、`float`/`double`/`float64`、`str`/`string`。
+
 ### 输入
 
 ```chronos

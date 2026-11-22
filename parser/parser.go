@@ -280,7 +280,63 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 // ---- 前缀解析 ----
 
 func (p *Parser) parseIdentifier() ast.Expression {
+	// C++ 风格强制转换：static_cast<int>(x)
+	if p.curToken.Literal == "static_cast" && p.peekTokenIs(token.LT) {
+		return p.parseStaticCast()
+	}
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+// parseStaticCast 解析 static_cast<T>(expr)，在语法树里降级成 T(expr) 调用。
+// 这样转换逻辑直接复用 int/float/str 内置函数，无需单独的 AST 节点。
+func (p *Parser) parseStaticCast() ast.Expression {
+	castTok := p.curToken
+
+	if !p.expectPeek(token.LT) {
+		return nil
+	}
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	typeName := p.curToken.Literal
+	if !p.expectPeek(token.GT) {
+		return nil
+	}
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	p.nextToken()
+	expr := p.parseExpression(LOWEST)
+	if expr == nil {
+		return nil
+	}
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+
+	var fn string
+	switch typeName {
+	case "int", "integer", "int64":
+		fn = "int"
+	case "float", "double", "float64":
+		fn = "float"
+	case "str", "string":
+		fn = "str"
+	default:
+		p.errors = append(p.errors,
+			fmt.Sprintf("static_cast: 不支持的类型 %q（可用 int / float / str）", typeName))
+		return nil
+	}
+
+	return &ast.CallExpression{
+		Token: castTok,
+		Function: &ast.Identifier{
+			Token: token.Token{Type: token.IDENT, Literal: fn},
+			Value: fn,
+		},
+		Arguments: []ast.Expression{expr},
+	}
 }
 
 func (p *Parser) parseIntegerLiteral() ast.Expression {
