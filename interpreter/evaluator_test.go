@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1104,4 +1105,33 @@ func TestBooleanLogic(t *testing.T) {
 	for _, tt := range tests {
 		testIntegerObject(t, testEval(t, tt.input), tt.expected)
 	}
+}
+
+func TestVirtualModuleFS(t *testing.T) {
+	vfs := map[string]string{
+		"lib.chr": "let add = fn(a, b) { return a + b }\n",
+	}
+	SetModuleReader(func(p string) ([]byte, error) {
+		for k, v := range vfs {
+			if p == k || strings.HasSuffix(p, k) {
+				return []byte(v), nil
+			}
+		}
+		return nil, fmt.Errorf("not found: %s", p)
+	})
+	SetModuleExists(func(p string) bool {
+		for k := range vfs {
+			if p == k || strings.HasSuffix(p, k) {
+				return true
+			}
+		}
+		return false
+	})
+	defer func() {
+		SetModuleReader(nil)
+		SetModuleExists(nil)
+	}()
+
+	input := "import \"lib\" as L\nL.add(3, 4)"
+	testIntegerObject(t, testEval(t, input), 7)
 }

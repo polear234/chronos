@@ -44,6 +44,23 @@
   }
   .pane-bar .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
   .pane-bar .spacer{flex:1}
+  .filerow{
+    display:flex;align-items:center;gap:6px;padding:5px 10px;
+    background:var(--panel);border-bottom:1px solid var(--border);flex:0 0 auto;
+  }
+  .filerow select{
+    flex:0 0 auto;min-width:110px;max-width:45%;
+    background:var(--bg);color:var(--fg);border:1px solid var(--border);
+    border-radius:6px;padding:4px 6px;font-size:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  .filerow button{
+    background:transparent;color:var(--accent);border:1px solid var(--border);
+    border-radius:6px;width:26px;height:26px;font-size:15px;line-height:1;
+    cursor:pointer;flex:0 0 auto;padding:0;
+  }
+  .filerow button:active{background:var(--border)}
+  .filerow .fhint{font-size:11px;color:var(--dim);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   textarea{
     flex:1;width:100%;resize:none;border:0;outline:0;
     background:var(--bg);color:var(--fg);
@@ -118,6 +135,12 @@
 <main>
   <section class="pane">
     <div class="pane-bar"><span class="dot"></span><span id="fname">main.chr</span> <span class="spacer"></span><span id="lines">0 行</span></div>
+    <div class="filerow">
+      <select id="fileSel" title="切换文件"></select>
+      <button id="newFileBtn" title="新建文件">＋</button>
+      <button id="delFileBtn" title="删除当前文件">－</button>
+      <span id="fileHint" class="fhint">单文件运行时无需 import</span>
+    </div>
     <textarea id="code" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="在这里写 Chronos 代码…"></textarea>
   </section>
   <section class="pane">
@@ -217,14 +240,106 @@ let evens = nums |> filter(fn(x) { x % 2 == 0 })
 print("偶数: " + str(evens))`
 };
 
-// ---- 当前文件名 ----
-let curName = localStorage.getItem('chronos.name') || 'main.chr';
-const fnameEl = document.getElementById('fname');
-function setFileName(n){
-  curName = n || 'main.chr';
-  fnameEl.textContent = curName;
-  localStorage.setItem('chronos.name', curName);
+// ---- 虚拟文件系统：多文件编辑 + import 支持 ----
+// 结构: { "main.chr": "源码", "lib.chr": "源码" }
+const FS_KEY = 'chronos.files';
+const FS_CUR = 'chronos.cur';
+let files = {};
+let curName = 'main.chr';
+
+function loadFiles(){
+  try {
+    const raw = localStorage.getItem(FS_KEY);
+    files = raw ? JSON.parse(raw) : {};
+  } catch (e) { files = {}; }
+  // 过滤非法文件名：只保留 .chr / .px 结尾，避免历史脏数据（如 "下载.svg"）
+  const valid = {};
+  for (const k of Object.keys(files)) {
+    if (/\.(chr|px)$/i.test(k)) valid[k] = files[k];
+  }
+  files = valid;
+  // 兼容旧版单文件存储
+  if (Object.keys(files).length === 0) {
+    const old = localStorage.getItem('chronos.code');
+    let oldName = localStorage.getItem('chronos.name') || 'main.chr';
+    if (!/\.(chr|px)$/i.test(oldName)) oldName = 'main.chr';
+    files[oldName] = old || SAMPLES.hello;
+  }
+  const savedCur = localStorage.getItem(FS_CUR);
+  curName = (savedCur && files[savedCur]) ? savedCur : Object.keys(files)[0];
 }
+
+function saveFiles(){
+  localStorage.setItem(FS_KEY, JSON.stringify(files));
+  localStorage.setItem(FS_CUR, curName);
+  // 同步到 WASM 虚拟文件表，供 import 使用
+  window.chronosFiles = files;
+}
+
+const fnameEl = document.getElementById('fname');
+const fileSel = document.getElementById('fileSel');
+const fileHint = document.getElementById('fileHint');
+
+function setFileName(n){
+  if (!n) return;
+  curName = n;
+  fnameEl.textContent = curName;
+  saveFiles();
+  refreshFileSel();
+}
+
+function refreshFileSel(){
+  const names = Object.keys(files).sort();
+  fileSel.innerHTML = '';
+  names.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    if (n === curName) o.selected = true;
+    fileSel.appendChild(o);
+  });
+  // 提示当前文件是否被别处 import
+  const others = names.filter(n => n !== curName && files[n].includes(curName.replace(/\.(chr|px)$/, '')));
+  fileHint.textContent = others.length
+    ? '被 ' + others.join(', ') + ' 引用'
+    : (names.length > 1 ? '可 import: ' + names.filter(n=>n!==curName).map(n=>n.replace(/\.(chr|px)$/,'')).join(', ') : '单文件运行时无需 import');
+}
+
+function switchFile(n){
+  if (!files[n]) return;
+  // 保存当前
+  files[curName] = codeEl.value;
+  curName = n;
+  codeEl.value = files[n];
+  setFileName(n);
+  updateLines();
+}
+
+function newFile(){
+  let base = 'lib', n = base + '.chr', i = 1;
+  while (files[n]) { n = base + i + '.chr'; i++; }
+  files[curName] = codeEl.value;
+  files[n] = '// ' + n + '\n';
+  switchFile(n);
+  statusEl.innerHTML = '已新建 <b>' + n + '</b>';
+}
+
+function delFile(){
+  const names = Object.keys(files);
+  if (names.length <= 1) {
+    statusEl.innerHTML = '<span style="color:var(--err)">至少保留一个文件</span>';
+    return;
+  }
+  if (!confirm('删除 ' + curName + ' ?')) return;
+  delete files[curName];
+  const next = Object.keys(files).sort()[0];
+  curName = next;
+  codeEl.value = files[next];
+  setFileName(next);
+  updateLines();
+  statusEl.innerHTML = '已删除，切换到 <b>' + next + '</b>';
+}
+
+loadFiles();
 setFileName(curName);
 
 // ---- 导入 / 导出（Android 桥）----
@@ -317,17 +432,19 @@ window.onApkResult = function(ok, msg) {
 
 // Android 侧导入完成后的回调
 window.onFileImported = function(name, content) {
-  setFileName(name);
+  files[curName] = codeEl.value;
+  files[name] = content;
+  curName = name;
   codeEl.value = content;
-  localStorage.setItem('chronos.code', content);
+  setFileName(name);
   updateLines();
   statusEl.innerHTML = '已导入 <b>' + name + '</b>';
   outEl.innerHTML = '<span class="dim">已导入 ' + name + '，点「运行」执行</span>';
 };
 
 // 恢复上次代码（内嵌脚本优先）
-const saved = localStorage.getItem('chronos.code');
-codeEl.value = saved || SAMPLES.hello;
+codeEl.value = files[curName] || SAMPLES.hello;
+window.chronosFiles = files;
 
 // ===== 编译产物检测：有 assets/script.chr（或旧版 script.px）就进入「运行模式」 =====
 let pendingRuntime = null;
@@ -364,7 +481,8 @@ updateLines();
 
 codeEl.addEventListener('input', () => {
   updateLines();
-  localStorage.setItem('chronos.code', codeEl.value);
+  files[curName] = codeEl.value;
+  saveFiles();
 });
 
 // ---- WASM 加载 ----
@@ -429,11 +547,17 @@ runBtn.addEventListener('click', runCode);
 // ---- 示例 / 工具 ----
 const bind = (id, sample) => document.getElementById(id).addEventListener('click', () => {
   codeEl.value = SAMPLES[sample];
-  localStorage.setItem('chronos.code', codeEl.value);
+  files[curName] = codeEl.value;
+  saveFiles();
   updateLines();
   runCode();
 });
 bind('exHello','hello'); bind('exTravel','travel'); bind('exOOP','oop'); bind('exPipe','pipe');
+
+// ---- 文件栏 ----
+fileSel.addEventListener('change', () => switchFile(fileSel.value));
+document.getElementById('newFileBtn').addEventListener('click', newFile);
+document.getElementById('delFileBtn').addEventListener('click', delFile);
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   outEl.innerHTML = '<span class="dim">（已清空）</span>';
@@ -441,7 +565,8 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 });
 document.getElementById('clearCode').addEventListener('click', () => {
   codeEl.value = '';
-  localStorage.setItem('chronos.code', '');
+  files[curName] = '';
+  saveFiles();
   updateLines();
   outEl.innerHTML = '<span class="dim">（已清空）</span>';
 });
@@ -452,7 +577,8 @@ const INDENT = '  '; // 两级缩进
 function setCode(value, caret) {
   codeEl.value = value;
   codeEl.selectionStart = codeEl.selectionEnd = caret;
-  localStorage.setItem('chronos.code', value);
+  files[curName] = value;
+  saveFiles();
   updateLines();
 }
 

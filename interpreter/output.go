@@ -46,3 +46,44 @@ func ReadInput(prompt string) string {
 	}
 	return strings.TrimRight(line, "\r\n")
 }
+
+// ── 模块文件系统（import 用）────────────────────────────
+
+// moduleReader 是可替换的模块文件读取器。
+// 为 nil 时用真实文件系统（CLI）；WASM 环境由宿主提供虚拟文件表。
+var moduleReader func(path string) ([]byte, error)
+
+// moduleExists 可选的"存在性"检查；nil 时退回真实文件系统。
+var moduleExists func(path string) bool
+
+// SetModuleReader 设置虚拟模块读取器，返回旧的读取器以便恢复。
+// reader 为 nil 时恢复真实文件系统行为。
+func SetModuleReader(reader func(path string) ([]byte, error)) func(string) ([]byte, error) {
+	old := moduleReader
+	moduleReader = reader
+	return old
+}
+
+// SetModuleExists 设置虚拟模块存在性检查，返回旧值。
+func SetModuleExists(fn func(path string) bool) func(string) bool {
+	old := moduleExists
+	moduleExists = fn
+	return old
+}
+
+// readModuleFile 读取模块源码：优先虚拟文件系统，否则读真实磁盘。
+func readModuleFile(path string) ([]byte, error) {
+	if moduleReader != nil {
+		return moduleReader(path)
+	}
+	return os.ReadFile(path)
+}
+
+// moduleFileExists 判断模块文件是否存在：优先虚拟文件系统，否则查磁盘。
+func moduleFileExists(path string) bool {
+	if moduleExists != nil {
+		return moduleExists(path)
+	}
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}

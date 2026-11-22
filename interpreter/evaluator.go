@@ -1420,8 +1420,8 @@ func evalImportStatement(is *ast.ImportStatement, env *object.Environment) objec
 		return newError("circular import detected: %s", modPath)
 	}
 
-	// 读取并解析模块文件
-	src, err := os.ReadFile(fullPath)
+	// 读取并解析模块文件（虚拟文件系统优先，WASM 环境用）
+	src, err := readModuleFile(fullPath)
 	if err != nil {
 		return newError("cannot read module %s: %v", modPath, err)
 	}
@@ -1474,11 +1474,11 @@ func evalImportStatement(is *ast.ImportStatement, env *object.Environment) objec
 func resolveModulePath(modPath, baseDir string) string {
 	// 已是绝对路径
 	if filepath.IsAbs(modPath) {
-		if fileExists(modPath) {
+		if moduleFileExists(modPath) {
 			return modPath
 		}
 		for _, ext := range []string{".chr", ".px"} {
-			if fileExists(modPath + ext) {
+			if moduleFileExists(modPath + ext) {
 				return modPath + ext
 			}
 		}
@@ -1498,7 +1498,7 @@ func resolveModulePath(modPath, baseDir string) string {
 		)
 	}
 	for _, c := range candidates {
-		if fileExists(c) {
+		if moduleFileExists(c) {
 			return c
 		}
 	}

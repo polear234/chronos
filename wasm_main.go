@@ -5,6 +5,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"syscall/js"
 
@@ -33,6 +35,44 @@ func main() {
 
 	js.Global().Set("chronosRun", js.FuncOf(runJS))
 	js.Global().Set("chronosCheck", js.FuncOf(checkJS))
+	// 虚拟文件系统：JS 侧维护 { "lib.chr": "源码..." }，import 时从这里取
+	interpreter.SetModuleReader(func(path string) ([]byte, error) {
+		files := js.Global().Get("chronosFiles")
+		if files.Type() != js.TypeObject {
+			return nil, fmt.Errorf("module not found: %s", path)
+		}
+		// 依次尝试完整路径、文件名、带/不带扩展名
+		cands := []string{path, filepath.Base(path)}
+		base := filepath.Base(path)
+		cands = append(cands,
+			strings.TrimSuffix(base, filepath.Ext(base)),
+			strings.TrimSuffix(base, filepath.Ext(base))+".chr",
+			base+".chr",
+		)
+		for _, c := range cands {
+			v := files.Get(c)
+			if v.Type() == js.TypeString {
+				return []byte(v.String()), nil
+			}
+		}
+		return nil, fmt.Errorf("module not found: %s", path)
+	})
+	interpreter.SetModuleExists(func(path string) bool {
+		files := js.Global().Get("chronosFiles")
+		if files.Type() != js.TypeObject {
+			return false
+		}
+		if files.Get(path).Type() == js.TypeString {
+			return true
+		}
+		base := filepath.Base(path)
+		if files.Get(base).Type() == js.TypeString {
+			return true
+		}
+		stem := strings.TrimSuffix(base, filepath.Ext(base))
+		return files.Get(stem).Type() == js.TypeString ||
+			files.Get(stem+".chr").Type() == js.TypeString
+	})
 	js.Global().Set("chronosVersion", js.FuncOf(func(this js.Value, args []js.Value) any {
 		return "Chronos " + version
 	}))
