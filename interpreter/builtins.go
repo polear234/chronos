@@ -30,6 +30,37 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 
+	// inputInt / inputFloat：直接读成数字，省去手动转换
+	"inputInt": {
+		Fn: func(args ...object.Object) object.Object {
+			prompt := ""
+			if len(args) > 0 {
+				prompt = args[0].Inspect()
+			}
+			raw := strings.TrimSpace(ReadInput(prompt))
+			n, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil {
+				return newError("inputInt: 无法解析整数 %q", raw)
+			}
+			return &object.Integer{Value: n}
+		},
+	},
+
+	"inputFloat": {
+		Fn: func(args ...object.Object) object.Object {
+			prompt := ""
+			if len(args) > 0 {
+				prompt = args[0].Inspect()
+			}
+			raw := strings.TrimSpace(ReadInput(prompt))
+			f, err := strconv.ParseFloat(raw, 64)
+			if err != nil {
+				return newError("inputFloat: 无法解析浮点数 %q", raw)
+			}
+			return &object.Float{Value: f}
+		},
+	},
+
 	"println": {
 		Fn: func(args ...object.Object) object.Object {
 			parts := make([]string, 0, len(args))

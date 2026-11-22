@@ -268,12 +268,15 @@ print(d.speak())   // "Buddy barks!"
 ### 输入
 
 ```chronos
-let name = input("请输入名字: ")   // 显示提示，读取一行
-print("你好，" + name)
+let name = input("请输入名字: ")       // 字符串
+let age  = inputInt("年龄: ")          // 整数（解析失败会报错）
+let pi   = inputFloat("圆周率约: ")    // 浮点数
 
-let age = int(input("年龄: "))
+print("你好，" + name)
 print("明年 " + str(age + 1) + " 岁")
 ```
+
+也可以用 `int(input(...))` 手动转换。
 
 > CLI 从 stdin 读；Android IDE 里会弹出输入框。
 
@@ -300,7 +303,7 @@ print(打招呼(名字))   // 你好，世界
 
 | 分类 | 函数 |
 |------|------|
-| 输入输出 | `print` `println` `input` |
+| 输入输出 | `print` `println` `input` `inputInt` `inputFloat` |
 | 类型 | `type` `int` `float` `str` |
 | 集合 | `len` `push` `pop` `shift` `unshift` `keys` `values` `range` |
 | 高阶 | `map` `filter` `forEach` `reduce` `find`（可被用户函数覆盖） |
