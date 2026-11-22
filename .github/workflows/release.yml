@@ -204,6 +204,12 @@ jobs:
             -ldflags "-s -w -X main.version=${{ steps.ver.outputs.version }}" \
             -o android/app/src/main/assets/chronos-linux-arm64 .
 
+      - name: Use JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Setup Android SDK
         run: |
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
