@@ -283,17 +283,39 @@ let m = int("42")
 ### 输入
 
 ```chronos
-let name = input("请输入名字: ")       // 字符串
-let age  = inputInt("年龄: ")          // 整数（解析失败会报错）
-let pi   = inputFloat("圆周率约: ")    // 浮点数
-
-print("你好，" + name)
+// 推荐：先声明类型，input 赋值时自动转换
+let int age = 0
+age = input("年龄: ")          // "25" → 25
 print("明年 " + str(age + 1) + " 岁")
+
+let float pi = 0.0
+pi = input("圆周率: ")         // "3.14" → 3.14
+
+let string name = ""
+name = input("名字: ")
+print("你好，" + name)
 ```
 
-也可以用 `int(input(...))` 手动转换。
+也可以用 `inputInt()` / `inputFloat()` 直接读成数字，或 `int(input(...))` 手动转换。
 
 > CLI 从 stdin 读；Android IDE 里会弹出输入框。
+
+### 类型化变量与隐式转换
+
+声明了类型的变量，赋值时会把**字符串自动转成数字**：
+
+```chronos
+let int n = 0
+n = "42"        // ✓ 自动转成 42
+
+let float f = 0
+f = "3.14"      // ✓ 自动转成 3.14
+
+let string s = "a"
+s = 42          // ✗ 报错：数字不会隐式转成字符串
+```
+
+只做「字符串 → 数字」的单向转换 —— 反向转换会掩盖类型错误。
 
 ### 模块
 

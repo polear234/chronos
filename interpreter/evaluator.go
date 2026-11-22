@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"chronos/ast"
@@ -163,6 +164,7 @@ func evalLetStatement(stmt *ast.LetStatement, env *object.Environment) object.Ob
 
 	// 类型校验：VarType 非空时检查初值类型是否匹配
 	if stmt.VarType != "" {
+		val = coerceToType(val, stmt.VarType)
 		if err := checkVarType(stmt.VarType, val); err != nil {
 			return err
 		}
@@ -182,6 +184,39 @@ func evalLetStatement(stmt *ast.LetStatement, env *object.Environment) object.Ob
 		env.Define(stmt.Name.Value, val)
 	}
 	return NIL
+}
+
+// coerceToType 在赋值给【类型化变量】时做隐式转换：
+//
+//	string "42"  → int 42
+//	int 3        → float 3.0
+//	int/float    → string "3"
+//
+// 转换失败时原样返回，交给 checkVarType 报类型错误。
+func coerceToType(val object.Object, targetType string) object.Object {
+	switch targetType {
+	case "int":
+		switch v := val.(type) {
+		case *object.String:
+			if n, err := strconv.ParseInt(strings.TrimSpace(v.Value), 10, 64); err == nil {
+				return &object.Integer{Value: n}
+			}
+		case *object.Float:
+			return &object.Integer{Value: int64(v.Value)}
+		}
+	case "float":
+		switch v := val.(type) {
+		case *object.String:
+			if f, err := strconv.ParseFloat(strings.TrimSpace(v.Value), 64); err == nil {
+				return &object.Float{Value: f}
+			}
+		case *object.Integer:
+			return &object.Float{Value: float64(v.Value)}
+		}
+	}
+	// 注意：不把 int/float 隐式转成 string —— 那样会掩盖 bug，
+	// 也破坏"类型化变量赋值严格校验"的语义。
+	return val
 }
 
 // checkVarType 校验对象类型是否匹配声明的类型标注
@@ -844,6 +879,7 @@ func evalAssignTarget(left ast.Expression, env *object.Environment, newVals ...o
 		if assigning {
 			// 类型校验
 			if varType := env.GetVarType(l.Value); varType != "" {
+				newVal = coerceToType(newVal, varType)
 				if err := checkVarType(varType, newVal); err != nil {
 					return err
 				}
