@@ -47,8 +47,11 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          [ -n "$VERSION" ] || VERSION="0.2.2"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(grep -E '^VERSION *:=' Makefile | sed 's/.*:= *//')"
+          fi
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"
           mkdir -p dist
@@ -95,8 +98,11 @@ jobs:
       - name: Build MSI
         shell: pwsh
         run: |
-          $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
-          if (-not $VERSION) { }
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
+          } else {
+            $VERSION = ((Select-String -Path Makefile -Pattern '^VERSION\s*:=').Line -split ':=')[1].Trim()
+          }
           $wix = "${{ steps.wix.outputs.bin }}"
           $src = "$PWD\dist\chronos-windows-${{ matrix.arch }}.exe"
           New-Item -ItemType Directory -Force -Path obj | Out-Null
@@ -113,8 +119,11 @@ jobs:
       - name: Build portable ZIP
         shell: pwsh
         run: |
-          $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
-          if (-not $VERSION) { }
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
+          } else {
+            $VERSION = ((Select-String -Path Makefile -Pattern '^VERSION\s*:=').Line -split ':=')[1].Trim()
+          }
           $tmp = "portable"
           New-Item -ItemType Directory -Force -Path $tmp | Out-Null
           Copy-Item "dist/chronos-windows-${{ matrix.arch }}.exe" "$tmp/chronos.exe"
@@ -146,8 +155,11 @@ jobs:
 
       - name: Build deb
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          [ -n "$VERSION" ] || VERSION="0.2.2"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(grep -E '^VERSION *:=' Makefile | sed 's/.*:= *//')"
+          fi
           ARCH="${{ matrix.arch }}"
           PKG="$(mktemp -d)"
           mkdir -p "$PKG/DEBIAN" "$PKG/usr/local/bin"
@@ -189,8 +201,11 @@ jobs:
       - name: Read version
         id: ver
         run: |
-          V="${GITHUB_REF_NAME#v}"
-          [ -n "$V" ] || V="0.2.2"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="$(grep -E '^VERSION *:=' Makefile | sed 's/.*:= *//')"
+          fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - name: Build WASM runtime
