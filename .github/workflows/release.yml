@@ -249,7 +249,7 @@ jobs:
 
   # ── 6. 汇总发布 ─────────────────────────────────────────
   release:
-    needs: [ build, package-windows, package-deb, package-android ]
+    needs: [ build, package-windows, package-deb ]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
