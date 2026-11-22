@@ -19,7 +19,15 @@ if [ -z "${BT:-}" ]; then
         BT="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
     fi
 fi
-PLAT="${PLAT:-$(ls "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1)}"
+# platform：必须优先 android-34，与 build-tools 34.0.0 配套。
+# 若取到 android-37 等更高版本，编译出的 class 用 34.0.0 的 D8 处理会触发内部 NPE。
+if [ -z "${PLAT:-}" ]; then
+    if [ -f "$SDK/platforms/android-34/android.jar" ]; then
+        PLAT="$SDK/platforms/android-34/android.jar"
+    else
+        PLAT="$(ls "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1)"
+    fi
+fi
 
 if [ -z "$BT" ] || [ ! -d "$BT" ]; then
     echo "错误：找不到 build-tools（SDK=$SDK）" >&2
