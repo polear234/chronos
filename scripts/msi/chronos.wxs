@@ -20,7 +20,7 @@
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLDIR" Name="Chronos">
-          <Component Id="ChronosExe" Guid="*">
+          <Component Id="ChronosExe" Guid="*" Win64="yes">
             <File Id="ChronosExeFile" Source="$(var.source)" KeyPath="yes" />
             <!-- 安装时把目录追加到系统 PATH，卸载时自动移除 -->
             <Environment Id="PathEnv"
