@@ -6,6 +6,9 @@
     light.exe -out chronos.msi chronos.wixobj
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?ifndef arch ?>
+  <?define arch = "amd64" ?>
+  <?endif?>
   <Product Id="*"
            Name="Chronos"
            Language="1033"
@@ -13,7 +16,11 @@
            Manufacturer="Chronos Contributors"
            UpgradeCode="8F3A6C2E-4B1D-4E7A-9C5F-2D8B7A1E6F03">
 
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+    <?if $(var.arch) = "arm64" ?>
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="arm64" />
+    <?else?>
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+    <?endif?>
     <MajorUpgrade DowngradeErrorMessage="A newer version of Chronos is already installed." />
     <MediaTemplate EmbedCab="yes" />
 

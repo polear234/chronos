@@ -102,6 +102,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path obj | Out-Null
           # WiX v3 的 -d 变量名区分大小写，需与 .wxs 中的 $(var.source)/$(var.version) 一致
           & "$wix\candle.exe" -dsource="$src" -dversion="$VERSION" `
+            -darch="${{ matrix.arch }}" `
             -out "obj\chronos-${{ matrix.arch }}.wixobj" scripts/msi/chronos.wxs
           if ($LASTEXITCODE -ne 0) { throw "candle 失败" }
           & "$wix\light.exe" `
