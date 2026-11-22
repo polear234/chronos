@@ -99,7 +99,9 @@ jobs:
           if (-not $VERSION) { $VERSION = "0.2.1" }
           $wix = "${{ steps.wix.outputs.bin }}"
           $src = "$PWD\dist\chronos-windows-${{ matrix.arch }}.exe"
-          & "$wix\candle.exe" -dSource="$src" -dVersion="$VERSION" -out obj scripts/msi/chronos.wxs
+          New-Item -ItemType Directory -Force -Path obj | Out-Null
+          # WiX v3 的 -d 变量名区分大小写，需与 .wxs 中的 $(var.source)/$(var.version) 一致
+          & "$wix\candle.exe" -dsource="$src" -dversion="$VERSION" -out obj scripts/msi/chronos.wxs
           if ($LASTEXITCODE -ne 0) { throw "candle 失败" }
           & "$wix\light.exe" -out "dist/chronos-$VERSION-windows-${{ matrix.arch }}.msi" obj\chronos.wixobj
           if ($LASTEXITCODE -ne 0) { throw "light 失败" }
