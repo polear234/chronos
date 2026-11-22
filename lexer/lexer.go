@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -17,6 +18,9 @@ type Lexer struct {
 }
 
 func New(input string) *Lexer {
+	// 剥离 UTF-8 BOM：Windows 记事本/PowerShell 保存的文件常带 \ufeff，
+	// 不去掉会被当成非法字符，导致 line 1:1: unexpected token ILLEGAL
+	input = strings.TrimPrefix(input, "\ufeff")
 	l := &Lexer{input: input, line: 1, column: 0}
 	l.readChar()
 	return l

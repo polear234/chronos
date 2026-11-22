@@ -318,3 +318,13 @@ func TestUnicodeMixedIdentifier(t *testing.T) {
 		t.Fatalf("expected IDENT '水果list2', got %q %q", tok.Type, tok.Literal)
 	}
 }
+
+func TestBOM(t *testing.T) {
+	// Windows 记事本/PowerShell 保存的 UTF-8 文件带 BOM，必须能正常解析
+	input := "\ufefflet x = 1"
+	l := New(input)
+	tok := l.NextToken()
+	if tok.Type != token.LET {
+		t.Fatalf("BOM 未剥离：首 token 类型 = %s, 期望 LET", tok.Type)
+	}
+}
