@@ -16,7 +16,7 @@ var builtins = map[string]*object.Builtin{
 			for _, arg := range args {
 				parts = append(parts, arg.Inspect())
 			}
-			fmt.Println(strings.Join(parts, " "))
+			fmt.Fprintln(outputWriter, strings.Join(parts, " "))
 			return NIL
 		},
 	},
@@ -26,7 +26,7 @@ var builtins = map[string]*object.Builtin{
 			for _, arg := range args {
 				parts = append(parts, arg.Inspect())
 			}
-			fmt.Println(strings.Join(parts, " "))
+			fmt.Fprintln(outputWriter, strings.Join(parts, " "))
 			return NIL
 		},
 	},

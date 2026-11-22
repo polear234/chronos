@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 jobs:
+  # ── 1. 测试 ──────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +22,7 @@ jobs:
       - name: Test
         run: go test ./...
 
+  # ── 2. 交叉编译六平台二进制 ──────────────────────────────
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -46,26 +48,136 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -n "$VERSION" ] || VERSION="0.1.0"
+          [ -n "$VERSION" ] || VERSION="0.2.1"
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"
-          OUT="chronos-${GOOS}-${GOARCH}${EXT}"
           mkdir -p dist
-          go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$OUT" .
-          ls -lh "dist/$OUT"
+          go build -trimpath -ldflags "-s -w -X main.version=$VERSION" \
+            -o "dist/chronos-${GOOS}-${GOARCH}${EXT}" .
+          ls -lh dist/*
 
       - uses: actions/upload-artifact@v4
         with:
-          name: chronos-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: bin-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
           retention-days: 7
 
-  release:
+  # ── 3. Windows: MSI 安装包（自动写 PATH）+ 便携 ZIP ──────
+  package-windows:
     needs: build
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [ amd64, arm64 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bin-windows-${{ matrix.arch }}
+          path: dist
+
+      - name: Locate WiX Toolset
+        id: wix
+        shell: pwsh
+        run: |
+          $c = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*\bin\candle.exe" -ErrorAction SilentlyContinue |
+               Select-Object -First 1
+          if (-not $c) {
+            Write-Host "预装 WiX 未找到，改用 Chocolatey 安装"
+            choco install wixtoolset --version=3.14.1 -y --no-progress
+            $c = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*\bin\candle.exe" |
+                 Select-Object -First 1
+          }
+          "bin=$($c.DirectoryName)" >> $env:GITHUB_OUTPUT
+          Write-Host "WiX: $($c.DirectoryName)"
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
+          if (-not $VERSION) { $VERSION = "0.2.1" }
+          $wix = "${{ steps.wix.outputs.bin }}"
+          $src = "$PWD\dist\chronos-windows-${{ matrix.arch }}.exe"
+          & "$wix\candle.exe" -dSource="$src" -dVersion="$VERSION" -out obj scripts/msi/chronos.wxs
+          if ($LASTEXITCODE -ne 0) { throw "candle 失败" }
+          & "$wix\light.exe" -out "dist/chronos-$VERSION-windows-${{ matrix.arch }}.msi" obj\chronos.wixobj
+          if ($LASTEXITCODE -ne 0) { throw "light 失败" }
+
+      - name: Build portable ZIP
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
+          if (-not $VERSION) { $VERSION = "0.2.1" }
+          $tmp = "portable"
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          Copy-Item "dist/chronos-windows-${{ matrix.arch }}.exe" "$tmp/chronos.exe"
+          Copy-Item README.md, LICENSE "$tmp/"
+          if (Test-Path examples) { Copy-Item examples "$tmp/examples" -Recurse }
+          Compress-Archive -Path "$tmp/*" `
+            -DestinationPath "dist/chronos-$VERSION-windows-${{ matrix.arch }}.zip" -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-windows-${{ matrix.arch }}
+          path: |
+            dist/*.msi
+            dist/*.zip
+          retention-days: 7
+
+  # ── 4. Linux: deb 安装包 ────────────────────────────────
+  package-deb:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [ amd64, arm64 ]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bin-linux-${{ matrix.arch }}
+          path: dist
+
+      - name: Build deb
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -n "$VERSION" ] || VERSION="0.2.1"
+          ARCH="${{ matrix.arch }}"
+          PKG="$(mktemp -d)"
+          mkdir -p "$PKG/DEBIAN" "$PKG/usr/local/bin"
+          cp "dist/chronos-linux-$ARCH" "$PKG/usr/local/bin/chronos"
+          chmod 755 "$PKG/usr/local/bin/chronos"
+          cat > "$PKG/DEBIAN/control" <<EOF
+          Package: chronos
+          Version: $VERSION
+          Section: devel
+          Priority: optional
+          Architecture: $ARCH
+          Maintainer: Chronos Contributors <chronos@example.com>
+          Depends: libc6
+          Description: Chronos - a lightweight scripting language
+           Lightweight dynamically-typed scripting language implemented in Go.
+           Features variable time-travel (rollback), transactional snapshots,
+           pipe operator, classes with inheritance, and a module system.
+          EOF
+          dpkg-deb --build --root-owner-group "$PKG" \
+            "dist/chronos_${VERSION}_${ARCH}.deb"
+          rm -rf "$PKG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-deb-${{ matrix.arch }}
+          path: dist/*.deb
+          retention-days: 7
+
+  # ── 5. 汇总发布 ─────────────────────────────────────────
+  release:
+    needs: [ build, package-windows, package-deb ]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -81,14 +193,16 @@ jobs:
         run: |
           {
             printf 'Chronos %s\n\n' "$GITHUB_REF_NAME"
-            printf '用 Go 手写的轻量脚本语言：变量时间旅行 `rollback()`、`withSnapshot`、管道 `|>`、数组方法链、类继承、模式匹配、import 模块。\n\n'
+            printf '用 Go 手写的轻量脚本语言：变量时间旅行 `rollback()`、`withSnapshot`、管道 `|>`、类继承、模式匹配、import 模块。\n\n'
             printf '### 下载\n\n'
             printf '| 平台 | 文件 |\n|---|---|\n'
-            for f in dist/chronos-*; do
+            for f in dist/chronos-* dist/*.deb; do
               case "$f" in *SHA256*) continue;; esac
+              [ -f "$f" ] || continue
               printf '| %s | `%s` |\n' "$(basename "$f")" "$(basename "$f")"
             done
             printf '\n### 快速开始\n\n'
+            printf '**Windows**：下载 `.msi` 双击安装（自动加入 PATH），或 `.zip` 解压即用。\n\n'
             printf '```bash\n'
             printf 'chmod +x chronos-linux-arm64\n'
             printf './chronos-linux-arm64 run examples/hello.px\n'

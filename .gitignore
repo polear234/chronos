@@ -14,3 +14,9 @@ Thumbs.db
 # 本地编译产物
 /dist/
 /bin/
+
+# Android 构建产物（由 android/build-apk.sh 生成）
+/android/app/src/main/assets/chronos.wasm
+/android/app/src/main/assets/template.apk
+/android/app/src/main/assets/chronos-linux-arm64
+/android/app/src/main/assets/chronos.keystore

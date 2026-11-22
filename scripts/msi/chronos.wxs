@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Chronos Windows 安装包定义（wixl 兼容子集）
+  用法（Windows / WiX v3）:
+    candle.exe -dSource=chronos.exe -dVersion=0.2.1 chronos.wxs
+    light.exe -out chronos.msi chronos.wixobj
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="Chronos"
+           Language="1033"
+           Version="$(var.version)"
+           Manufacturer="Chronos Contributors"
+           UpgradeCode="8F3A6C2E-4B1D-4E7A-9C5F-2D8B7A1E6F03">
+
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Chronos is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="Chronos">
+          <Component Id="ChronosExe" Guid="*">
+            <File Id="ChronosExeFile" Source="$(var.source)" KeyPath="yes" />
+            <!-- 安装时把目录追加到系统 PATH，卸载时自动移除 -->
+            <Environment Id="PathEnv"
+                         Name="PATH"
+                         Value="[INSTALLDIR]"
+                         Permanent="no"
+                         Part="last"
+                         Action="set"
+                         System="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="MainFeature" Title="Chronos" Level="1">
+      <ComponentRef Id="ChronosExe" />
+    </Feature>
+  </Product>
+</Wix>

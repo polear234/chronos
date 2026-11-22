@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  编译产物（用户脚本的独立 App）专用 Manifest。
+  与 IDE 使用不同 package，避免覆盖安装。
+  注意：activity/provider 用全限定类名，因为类仍编译在 com.chronos.ide 包下。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.chronos.script"
+    android:versionCode="1"
+    android:versionName="0.2.1">
+
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true">
+
+        <activity
+            android:name="com.chronos.ide.MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

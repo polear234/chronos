@@ -2,556 +2,396 @@
 
 <img src="docs/logo.png" width="180" alt="Chronos logo">
 
-# 🚀 Chronos
+# Chronos
 
-**一个用 Go 手写的轻量级动态类型脚本语言**
+**一门把「时间」做成一等公民的脚本语言**
 
-*变量时间旅行 · 事务性快照 · 管道操作符 · 类继承*
+*变量可回滚 · 数据可快照 · 一行编译成 APK / SH*
 
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronos/release.yml?branch=main)](https://github.com/polear234/chronos/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronos)](https://goreportcard.com/report/github.com/polear234/chronos)
+[![Version](https://img.shields.io/badge/version-0.2.1-3ddcae.svg)]()
 [![Go Version](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
-[![Lines](https://img.shields.io/badge/code-6.5k%20lines-informational.svg)]()
+[![Platform](https://img.shields.io/badge/platform-android%20%7C%20linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
 
-<br/>
+[![Lines](https://img.shields.io/badge/code-7k%20lines-informational.svg)]()
+[![Deps](https://img.shields.io/badge/dependencies-zero-success.svg)]()
 
 </div>
 
 ---
 
-## ✨ 为什么是 Chronos？
+## 🕐 核心：变量时间旅行
 
-大多数脚本语言把「时间」留给了程序员自己管理。Chronos 把它做成了语言的一等概念 —— **变量能回滚、数据能快照、操作能撤销**。
+这是 Chronos 与其他脚本语言最大的不同 —— **每一次赋值都会被记录，你可以随时回到过去**。
 
 ```chronos
-// 🕐 变量时间旅行：每次赋值自动压栈，可逐步回滚
-let traveller int b = 1
-b = 2
-b = 3
-b.rollback()    // → 2
-b.rollback()    // → 1
+let traveller int hp = 100
 
-// 🔄 事务性快照：callback 内随便改，执行完自动恢复
+hp = 80        // 受伤
+hp = 30        // 重伤
+print(hp)      // 30
+
+hp.rollback()  // 时光倒流
+print(hp)      // 80
+
+hp.rollback()
+print(hp)      // 100
+```
+
+不是撤销一次操作，而是**每个变量自带一条历史栈**。调试、模拟、状态回退，不用再手写备份逻辑。
+
+---
+
+## 🔄 事务性快照
+
+改坏了不怕，`withSnapshot` 在回调结束后自动还原：
+
+```chronos
 let arr = [1, 2, 3]
+
 withSnapshot([arr], fn() {
     arr.push(99)
+    arr.push(100)
+    print(arr)   // [1, 2, 3, 99, 100]
 })
-// arr 仍是 [1, 2, 3]
 
-// ⛓️ 管道操作符：消除嵌套函数调用
-let n = [1, 2, 3] |> len()    // → 3
+print(arr)       // [1, 2, 3]  ← 自动恢复
+```
 
-// 🧬 类继承 + 多态
-class Dog extends Animal {
-    speak() { return this.name + " barks!" }
-}
-let dog = new Dog("Buddy")
-print(dog.speak())            // "Buddy barks!"
+需要手动控制提交时机时，用 `Timeline`：
+
+```chronos
+let t = Timeline(arr)
+arr.push(4)
+t.commit()       // 提交，丢弃历史
 ```
 
 ---
 
-## 📑 目录
+## ⛓️ 管道操作符
 
-- [✨ 为什么是 Chronos？](#-为什么是-chronos)
-- [🌟 特性](#-特性)
-- [📦 安装](#-安装)
-- [🚀 快速开始](#-快速开始)
-- [🕐 时间特性](#-时间特性)
-- [📖 语法速览](#-语法速览)
-- [🧰 内置函数与方法](#-内置函数与方法)
-- [💻 命令行](#-命令行)
-- [📦 编译成独立可执行文件](#-编译成独立可执行文件)
-- [📁 示例程序](#-示例程序)
-- [🏗️ 架构](#️-架构)
-- [⚠️ 已知限制](#️-已知限制)
-- [🛣️ 路线图](#️-路线图)
-- [🤝 贡献](#-贡献)
-- [📄 许可证](#-许可证)
+把嵌套调用写成从左到右的数据流：
+
+```chronos
+// 传统写法
+let evens = filter(map([1,2,3,4,5], fn(x){ x * 2 }), fn(x){ x % 4 == 0 })
+
+// Chronos
+let evens = [1,2,3,4,5]
+    |> map(fn(x) { x * 2 })
+    |> filter(fn(x) { x % 4 == 0 })
+```
+
+`a |> f(b)` 完全等价于 `f(b, a)` —— 值作为**最后一个参数**传入。
 
 ---
 
-## 🌟 特性
+## 📱 编译成安卓应用
 
-| 类别 | 特性 |
-|------|------|
-| 🧠 **语言核心** | 动态类型 · 一等函数 · 闭包 · 递归 · 高阶函数 |
-| 🏛️ **面向对象** | 类 · 单继承 · 多态 · `this`/`super` · 方法重写 |
-| 🕐 **时间特性** | traveller 回滚变量 · `withSnapshot` 事务快照 · `Timeline` 版本历史 |
-| 🎯 **控制流** | `if`/`elif`/`else` · `while` · `for-in` · `break`/`continue` |
-| 🧩 **模式匹配** | `match`/`case`/`default`（值匹配） |
-| 🛡️ **错误处理** | `try`/`catch`/`finally`/`throw` |
-| ⛓️ **语法糖** | 管道操作符 `\|>` · 数组/字符串/字典方法链 · 类型标注 |
-| 📦 **模块系统** | `import`/`as` · 独立环境 · 循环引用检测 |
-| 🧰 **标准库** | 字符串 / 数组 / 字典方法 · 类型转换 · `range` |
-| 🌏 **国际化** | Unicode 标识符：中文 / 日文 / 俄文均可作变量名、函数名、类名 |
+这是 0.2 版本的新能力：**把脚本变成真正的安卓应用**。
+
+> APK / SH 编译由手机端的 **Chronos IDE** 提供；CLI 的 `chronos build` 只生成桌面可执行文件。
+
+在 Chronos IDE 里写好代码，点按钮即可：
+
+| 按钮 | 产物 | 用途 |
+|------|------|------|
+| 📦 打包 APK | `xxx.apk` | 独立安卓应用，可分享安装 |
+| 🐚 编译 SH | `xxx.sh` | Termux / Linux 直接运行 |
+
+编译出的 APK 是**纯运行模式** —— 打开只显示输出，没有编辑器、没有按钮，就像 C++ 编译出的可执行文件。
+
+<details>
+<summary>技术细节：APK 是怎么生成的</summary>
+
+1. App 内预置一个「模板 APK」（裸的 WebView 宿主）
+2. 打包时读模板，用 `ZipOutputStream` 重写：剔除旧签名、注入 `assets/script.px`
+3. 关键约束：Android 11+ 要求 `resources.arsc` **不压缩且 4 字节对齐** —— 通过「首个条目 + STORED + 无 extra」让它天然落在偏移 44
+4. 用内置 keystore + `apksig` 重新签名（v1 + v2）
+5. 自定义包名：解析二进制 AXML 字符串池，替换 `package` 属性的字符串（支持 UTF-16 / UTF-8 两种编码）
+6. 通过自实现的 `ContentProvider` 暴露 `content://` URI，拉起系统安装器
+
+</details>
 
 ---
 
 ## 📦 安装
 
-### 🐧 方式一：deb 安装包（Ubuntu / Debian，推荐）
+### Windows
+
+| 方式 | 文件 | 说明 |
+|------|------|------|
+| **MSI 安装包** | `chronos-0.2.1-windows-amd64.msi` | 双击安装到 `Program Files\Chronos` |
+| **便携版 ZIP** | `chronos-0.2.1-windows-amd64.zip` | 解压即用，无需安装 |
+| **PowerShell** | `install.ps1` | `.\install.ps1` 用户级安装 |
+
+> ARM64 Windows（如 Surface Pro X）把文件名里的 `amd64` 换成 `arm64`。
+
+### Linux
 
 ```bash
-# amd64 机器
-sudo dpkg -i chronos_0.1.0_amd64.deb
+# deb 包（Ubuntu / Debian）
+sudo dpkg -i chronos_0.2.1_amd64.deb     # x86_64
+sudo dpkg -i chronos_0.2.1_arm64.deb     # arm64（树莓派 / 手机）
 
-# arm64 机器（手机 / 树莓派 / 苹果 M 系列）
-sudo dpkg -i chronos_0.1.0_arm64.deb
-
-# 验证
-chronos --version     # Chronos 0.1.0
+# 或安装脚本
+sudo ./install.sh          # 系统级 → /usr/local/bin
+./install.sh --user        # 用户级 → ~/.local/bin
 ```
 
-### 📜 方式二：安装脚本
+### macOS
 
 ```bash
-sudo ./install.sh          # 系统级安装到 /usr/local/bin
-./install.sh --user        # 用户级安装到 ~/.local/bin
+# Apple Silicon
+chmod +x chronos-darwin-arm64 && sudo mv chronos-darwin-arm64 /usr/local/bin/chronos
+
+# Intel
+chmod +x chronos-darwin-amd64 && sudo mv chronos-darwin-amd64 /usr/local/bin/chronos
 ```
 
-### 🔨 方式三：源码编译
+### Android
+
+安装 `chronos-ide-0.2.1.apk` —— 内置编辑器和编译器，可离线运行、打包 APK / SH。
+
+### 源码编译
 
 ```bash
-go build -o chronos .        # 编译单文件二进制
-make dist                  # 交叉编译六平台（linux/macos/windows × amd64/arm64）
-```
-
-> 💡 编译产物是**单文件静态二进制**（`CGO_ENABLED=0` + `-s -w`），无任何运行时依赖，直接拷贝到同架构机器即可运行。
-
----
-
-## 🚀 快速开始
-
-```bash
-$ chronos
-Chronos v0.1.0 — a lightweight scripting language (Go implementation)
-Type 'exit' / 'quit' to leave, 'clear' to reset the environment.
-
-chronos> let x = 40 + 2
-chronos> x
-42
-chronos> fn fib(n) { if n <= 1 { return n } return fib(n-1) + fib(n-2) }
-chronos> fib(10)
-55
-```
-
-运行脚本：
-
-```bash
-chronos -run hello.px            # 运行文件
-chronos run -                    # 从 stdin 读取
-echo 'print("Hello World!")' | chronos run -
+git clone https://github.com/polear234/chronos.git
+cd chronos
+go build -o chronos .      # 需要 Go 1.21+，零第三方依赖
 ```
 
 ---
 
-## 🕐 时间特性
-
-这是 Chronos 与其他脚本语言最大的不同。
-
-### traveller 变量（可回滚）
+## 🚀 第一个程序
 
 ```chronos
-let traveller int x = 1
-x = 2
-x = 3
-x.rollback()   // → 2
-x.rollback()   // → 1
-x.rollback()   // 💥 ERROR: Traveller history is empty
+// hello.px
+print("Hello, Chronos!")
+
+fn fib(n) {
+    if n <= 1 { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+print("fib(10) = " + str(fib(10)))   // 55
 ```
 
-- 每次赋值把旧值压入历史栈（默认上限 100 条，防止内存膨胀）
-- 读取时透明解包，`x + 1` 直接当普通变量用
-- 支持类型标注，赋值时校验类型
-
-### withSnapshot（事务性回滚）
-
-```chronos
-let arr = [1, 2, 3]
-withSnapshot([arr], fn() {
-    arr.push(4)
-    arr.push(5)
-})
-arr          // → [1, 2, 3]（自动恢复）
+```bash
+chronos run hello.px
+# Hello, Chronos!
+# fib(10) = 55
 ```
 
-数组按长度快照、字典按浅拷贝快照，执行完**原地恢复**，引用不变。
+---
 
-### Timeline（版本历史）
+## 🌟 完整特性
 
-```chronos
-let data = [1]
-let tl = Timeline(data)
-
-tl.commit()      // 快照 [1]
-data.push(2)
-tl.commit()      // 快照 [1, 2]
-data.push(3)
-
-tl.undo()        // → [1, 2]
-tl.undo()        // → [1]
-```
+| 类别 | 能力 |
+|------|------|
+| 🕐 **时间特性** | `traveller` 回滚变量 · `withSnapshot` 事务快照 · `Timeline` 提交/撤销 |
+| 🧠 **语言核心** | 动态类型 · 一等函数 · 闭包 · 递归 · 高阶函数 |
+| 🏛️ **面向对象** | 类 · 单继承 · 多态 · `this` / `super` · 方法重写 · 继承环检测 |
+| ⛓️ **语法糖** | 管道 `\|>` · 方法链 · 类型标注 · 复合赋值 `+= -= *= /=` |
+| 🎯 **控制流** | `if`/`elif`/`else` · `while` · `for-in` · `break`/`continue` |
+| 🧩 **模式匹配** | `match` / `case` / `default` |
+| 🛡️ **错误处理** | `try` / `catch` / `finally` / `throw` |
+| 📦 **模块系统** | `import` / `as` · 独立环境 · 循环引用检测 |
+| 🌏 **国际化** | Unicode 标识符：中文 / 日文 / 俄文均可命名 |
+| 📱 **分发** | 编译为 APK · 编译为自包含 SH 脚本 |
 
 ---
 
 ## 📖 语法速览
 
-### 📌 变量与类型
+### 变量与类型
 
 ```chronos
-let x = 10            // 可变变量
-const PI = 3.14159    // 常量（重新赋值会报错）
-
-let num = 42          // 整数
-let pi = 3.14         // 浮点数
-let str = "Hello"     // 字符串
-let flag = true       // 布尔值
-let nothing = nil     // 空值
-
-// 类型标注
-let int count = 0
-let string name = "Chronos"
+let x = 10                    // 动态类型
+let int n = 42                // 类型标注，赋值时会校验
+let string s = "你好"
+let traveller int hp = 100    // 带历史栈的变量
 ```
 
-### 📚 数组与字典
+### 控制流
 
 ```chronos
-let lst = [1, 2, 3, "hello"]
-
-lst.push(4)                            // 追加
-lst.pop()                              // 移除末尾
-lst.length()                           // 长度
-lst.map(fn(x) { x * 2 })               // 映射
-lst.filter(fn(x) { x > 1 })            // 过滤
-lst.reduce(fn(acc, x) { acc + x }, 0)  // 归约
-lst[0]                                 // 索引访问
-
-let dict = {"name": "Alice", "age": 25}
-dict["name"]                           // 访问
-dict["age"] = 26                       // 修改
-dict.has("name")                       // 是否存在
-```
-
-### 🎯 函数与闭包
-
-```chronos
-fn add(a, b) {
-    return a + b
-}
-
-// 闭包捕获外层变量
-fn makeCounter() {
-    let count = 0
-    return fn() {
-        count = count + 1
-        return count
-    }
-}
-
-let counter = makeCounter()
-counter()   // 1
-counter()   // 2
-```
-
-### 🔀 控制流
-
-```chronos
-if x > 0 {
-    print("positive")
-} elif x < 0 {
-    print("negative")
+if x > 5 {
+    print("big")
+} elif x > 0 {
+    print("small")
 } else {
     print("zero")
 }
 
-for item in array {
-    print(item)
+for i in range(0, 3) {
+    print(i)
 }
 
-for i in range(10) {
-    print(i)          // 0 到 9
-}
-
-while condition {
-    // ...
+let i = 0
+while i < 3 {
+    i += 1
 }
 ```
 
-### 🏛️ 类与继承
+### 函数与闭包
+
+```chronos
+fn add(a, b) { return a + b }
+
+let mul = fn(a, b) { a * b }   // 匿名函数
+print(add(1, 2))               // 3
+print(mul(3, 4))               // 12
+```
+
+### 类与继承
 
 ```chronos
 class Animal {
     name = ""
-
-    init(name) {
-        this.name = name
-    }
-
-    speak() {
-        return this.name + " makes a sound"
-    }
+    init(name) { this.name = name }
+    speak() { return this.name + " makes a sound" }
 }
 
 class Dog extends Animal {
-    speak() {
-        return this.name + " barks!"
-    }
+    speak() { return this.name + " barks!" }
+    info() { return super.speak() }   // 调用父类
 }
 
-let dog = new Dog("Buddy")
-dog.speak()    // → "Buddy barks!"
+let d = new Dog("Buddy")
+print(d.speak())   // "Buddy barks!"
 ```
 
-支持多层继承、`super.init()` 调用父类构造、`super.method()` 调用父类方法、方法重写。
-
-### 🧩 模式匹配
+### 模块
 
 ```chronos
-match (value) {
-    case 1:       { print("one") }
-    case "hello": { print("greeting") }
-    default:      { print("other: " + str(value)) }
+import "math_utils.px" as math
+print(math.add(1, 2))
+```
+
+### 中文标识符
+
+```chronos
+let 名字 = "世界"
+fn 打招呼(谁) {
+    return "你好，" + 谁
 }
+print(打招呼(名字))   // 你好，世界
 ```
-
-### 🛡️ 错误处理
-
-```chronos
-try {
-    let result = 10 / 0
-} catch (e) {
-    print("Error: " + e)     // e 是错误消息字符串
-} finally {
-    print("cleanup")
-}
-
-throw("Something went wrong")
-```
-
-### 📦 模块系统
-
-```chronos
-// math.px
-let PI = 3.14159
-fn square(x) { return x * x }
-
-// main.px
-import "math" as m
-print(m.square(5))    // → 25
-
-import "math"         // 默认用文件名做别名
-print(math.PI)        // → 3.14159
-```
-
-- 模块在**独立环境**中执行，不污染调用方作用域
-- 自动检测循环 import（A↔B 报错）
-- 支持 `import "dir/xxx"` 子目录，自动补 `.px`
 
 ---
 
-## 🧰 内置函数与方法
+## 🧰 内置函数
 
-### 全局函数
-
-| 函数 | 说明 |
+| 分类 | 函数 |
 |------|------|
-| `print(...)` / `println(...)` | 打印到控制台 |
-| `len(x)` | 长度（字符串 / 数组 / 字典） |
-| `type(x)` | 返回类型名 |
-| `int(x)` / `float(x)` / `str(x)` | 类型转换（失败会报错） |
-| `range(a, b?, step?)` | 生成数字数组 |
-| `push/pop/shift/unshift(arr, ...)` | 数组操作函数风格 |
+| 输出 | `print` `println` |
+| 类型 | `type` `int` `float` `str` |
+| 集合 | `len` `push` `pop` `shift` `unshift` `keys` `values` `range` |
+| 高阶 | `map` `filter` `forEach` `reduce` `find`（可被用户函数覆盖） |
 
-### 字符串方法
+### 方法
 
-| 方法 | 说明 |
-|------|------|
-| `s.length()` | 字符数（按 rune 计） |
-| `s.upper()` / `s.lower()` | 大小写转换 |
-| `s.trim()` | 去除首尾空白 |
-| `s.contains(sub)` | 是否包含子串 |
-| `s.split(sep)` | 切分为数组 |
-| `s.replace(old, new)` | 替换全部 |
+```chronos
+// 字符串
+s.length()  s.upper()  s.lower()  s.trim()
+s.contains("x")  s.split(",")  s.replace("a", "b")
 
-### 数组方法（14 个）
+// 数组方法
+arr.push(x)  arr.pop()  arr.shift()  arr.unshift(x)
+arr.insert(i, x)  arr.contains(x)  arr.concat(other)  arr.clear()
+arr.slice(a, b)  arr.join(",")  arr.reverse()  arr.length()
 
-| 类别 | 方法 |
-|------|------|
-| 增删 | `push` `pop` `shift` `unshift` `insert` `removeAt` `clear` |
-| 查询 | `length` `indexOf` `contains` |
-| 变换 | `slice` `concat` `reverse` `join` |
-| 高阶 | `map` `filter` `forEach` `reduce` `find` |
+// 高阶函数（全局形式，也推荐用管道）
+map(arr, fn)  filter(arr, fn)  forEach(arr, fn)
+reduce(arr, fn, init)  find(arr, fn)
+arr |> map(fn)      // 等价于 map(arr, fn)
 
-### 字典方法
-
-| 方法 | 说明 |
-|------|------|
-| `h.length()` | 键值对数量 |
-| `h.keys()` / `h.values()` | 键数组 / 值数组 |
-| `h.has(key)` | 键是否存在 |
+// 字典
+h.length()  h.keys()  h.values()  h.has("k")
+```
 
 ---
 
 ## 💻 命令行
 
-| 命令 | 说明 |
-|------|------|
-| `chronos` | 启动交互式 REPL |
-| `chronos run <file.px>` | 运行脚本 |
-| `chronos -run <file.px>` | 运行脚本（简写） |
-| `chronos build <file.px>` | **编译成独立可执行文件** |
-| `chronos build <file.px> -o <name>` | 编译并指定输出名 |
-| `chronos <file.px>` | 运行脚本（识别 `.px` 后缀） |
-| `chronos run -` | 从 stdin 读取并执行 |
-| `chronos version` | 查看版本 |
-| `chronos help` | 查看帮助 |
+```bash
+chronos run app.px          # 运行脚本
+chronos build app.px        # 编译成独立可执行文件
+chronos build app.px -p     # 明文模式（默认加密混淆）
+chronos build app.px -o out # 指定输出名
+chronos repl                # 交互式 REPL
+chronos version             # 查看版本
+chronos help                # 帮助
+```
 
-退出码：`0` 成功，`1` 运行时/编译错误，`2` 用法错误。
+### 编译产物
 
-REPL 内置命令：`exit` / `quit` 退出，`clear` 清空环境。
+```bash
+chronos build examples/hello.px -o hello
+./hello        # 独立运行，不依赖源码
+```
+
+编译采用「解释器 + 内嵌脚本」模式：
+- 默认 **AES-256-CTR 加密**脚本，防止明文泄露
+- `-p / --plain` 保留明文便于调试
+- 产物约 2 MB（含完整解释器）
+
+> ⚠️ 这是**混淆**而非真正的代码保护 —— 密钥在二进制内，有能力的逆向者仍可提取。
 
 ---
 
-## 📦 编译成独立可执行文件
-
-`chronos build` 把 `.px` 脚本**嵌入解释器副本**，产出一个单文件可执行程序 —— 双击就能跑，不需要源文件、不需要装 Chronos。
-
-```bash
-$ chronos build examples/hello.px
-✓ 已编译: hello
-  源文件: examples/hello.px (2518 字节)
-  产物:   /home/me/chronos/hello (2737564 字节)
-  运行:   ./hello
-
-$ ./hello
-Hello, Chronos v0.1
-Is awesome: true
-...
-```
-
-自定义输出名：
-
-```bash
-chronos build app.px -o /usr/local/bin/app
-```
-
-**实现原理**：在解释器二进制尾部追加 `[payload][8字节长度][16字节 magic]`，启动时检测到 magic 就直接执行内嵌脚本。
-
-**默认开启混淆加密**（AES-256-CTR，每份产物随机盐）：
-
-```bash
-chronos build app.px              # 默认：加密混淆
-chronos build app.px --plain      # 关闭加密，嵌入明文（便于调试）
-```
-
-- 加密后源码在二进制里是密文，`strings` / `hexdump` / `grep -a` 都读不出脚本内容
-- 同一脚本两次编译产物**不同**（随机盐），无法用哈希比对或差分推断
-- ⚠️ **这是混淆不是密码学安全**：解密密钥必须随二进制分发，有决心的人仍可逆向还原。它的目标是阻止"随手翻出源码"，不是防专业破解。真正的保密需要运行时输入密码解密，那是另一套设计。
-
-其他特性：
-
-- 产物与原解释器体积几乎相同（只多出脚本本身的大小）
-- **import 的相对路径以可执行文件所在目录为基准**，可把程序和模块一起分发
-- 编译前做语法检查，有错误直接中止（不会产出「一跑就炸」的二进制）
-- 支持对已 build 的二进制再次 build（自动剥离旧 payload，不叠加）
-
----
-
-## 📁 示例程序
-
-| 示例 | 说明 |
-|------|------|
-| [`hello.px`](examples/hello.px) | 基础语法完整演示（约 140 行） |
-| [`fibonacci.px`](examples/fibonacci.px) | 斐波那契三种实现：递归 / 迭代 / 备忘录 |
-| [`oop.px`](examples/oop.px) | 面向对象：类、继承、多态、静态方法、动态方法 |
-| [`math.px`](examples/math.px) | 可被 import 的数学模块 |
-| [`import_demo.px`](examples/import_demo.px) | 模块系统演示 |
-| [`i18n.px`](examples/i18n.px) | 中文变量/类/管道/回滚 全方位国际化测试 |
-
-```bash
-chronos -run examples/hello.px
-chronos -run examples/oop.px
-```
-
----
-
-## 🏗️ 架构
-
-经典的「词法 → 语法 → 树 → 求值」四段式，无第三方依赖，纯标准库实现。
+## 📁 项目结构
 
 ```
-chronos/                          ~6.5k 行 Go 代码
-├── main.go            164 行    CLI 入口（run / repl / version / help）
-├── token/             143 行    词法标记定义
-├── lexer/             647 行    词法分析器（含转义、注释、多字符运算符）
-├── parser/           1271 行    语法分析器（Pratt 解析，40+ 优先级规则）
-├── ast/               697 行    抽象语法树节点
-├── object/            508 行    运行时对象（含 Traveller / Timeline / Module）
-├── interpreter/      3011 行    求值器 + 内置函数 + 模块加载
-├── repl/              134 行    REPL 交互环境（多行输入检测）
-├── scripts/                     构建与安装脚本
-├── docs/                        Logo 等资源
-└── examples/                    示例程序
+chronos/
+├── main.go              CLI 入口
+├── embed.go             编译/加密/内嵌 payload
+├── wasm_main.go         WASM 入口（浏览器 / 安卓）
+├── token/               词法单元
+├── lexer/               词法分析（Unicode 标识符）
+├── ast/                 抽象语法树
+├── parser/              Pratt 解析器
+├── object/              运行时对象 + 环境 + Traveller
+├── interpreter/         求值器 + 内置函数
+├── repl/                交互式解释器
+├── examples/            示例程序
+├── android/             安卓 IDE（WebView + WASM）
+└── scripts/             安装脚本
 ```
 
 ---
 
 ## ⚠️ 已知限制
 
-诚实说明当前版本还没做到的事：
-
-- **标准库较薄**：没有文件 IO、网络、正则、数学函数（`sqrt`/`sin` 等）
-- **`import` 不缓存**：同一个模块被多处导入会重复执行
-- **`match` 只做值匹配**：不支持 `case [a, b]:` 这类结构解构
-- **无 GC 调优**：解释器直接用 Go 的 GC，长循环会积累临时对象
-- **无调试器**：只能靠 `print` 和 REPL 排查
-
----
-
-## 🛣️ 路线图
-
-- [x] 模块系统（import）
-- [x] traveller 变量回滚
-- [x] 管道操作符 `|>`
-- [x] withSnapshot / Timeline
-- [x] 类继承与多态
-- [x] 字符串 / 数组 / 字典方法
-- [ ] 标准库扩展（文件 IO、网络、正则、数学）
-- [ ] 模块缓存与包管理器
-- [ ] 编译器优化（字节码 VM）
-- [ ] 调试器支持
-- [ ] LSP 语言服务器
+- **标准库较薄**：无文件 IO / 网络 / 正则 / 数学库
+- **`import` 无缓存**：每次导入都会重新执行模块
+- **`match` 仅值匹配**：不支持解构或守卫
+- **无调试器**：只有 `print` 和错误堆栈
+- **编译产物 ≈ 解释器体积**：打包而非 AOT 编译
+- **快照是浅拷贝**：`withSnapshot` 的数组快照只记录长度，元素覆写不会恢复
 
 ---
 
 ## 🤝 贡献
 
-欢迎 Issue 和 PR。本地开发：
+欢迎 Issue 和 PR。核心原则：
+
+- **零第三方依赖** —— 只用 Go 标准库
+- **代码可读性优先** —— 这是教学向项目
+- **新特性需带测试**
 
 ```bash
-git clone git@github.com:polear234/chronos.git
-cd chronos
-go test ./...        # 跑全部测试（词法 / 语法 / 求值）
-go build -o chronos .  # 编译
+go test ./...      # 跑全部测试
+go vet ./...       # 静态检查
+make test          # 同上
 ```
-
-提交前请确保 `go vet ./...` 和 `go test ./...` 通过。
 
 ---
 
 ## 📄 许可证
 
-[MIT License](LICENSE) © 2026 Chronos Contributors
-
----
-
-<div align="center">
-
-**Made with ❤️ and Go**
-
-</div>
+[MIT](LICENSE) © 2026 Chronos Contributors

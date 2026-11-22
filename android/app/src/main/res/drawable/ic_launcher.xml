@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 深色底 -->
+    <path android:fillColor="#0D1117"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- 青绿圆环 -->
+    <path android:fillColor="#3DDCAE"
+        android:fillType="evenOdd"
+        android:pathData="M54,14a40,40 0 1,0 0,80a40,40 0 1,0 0,-80z M54,30a24,24 0 1,0 0,48a24,24 0 1,0 0,-48z" />
+    <!-- 右侧开口，形成 C -->
+    <path android:fillColor="#0D1117"
+        android:pathData="M54,28h54v52h-54z" />
+</vector>

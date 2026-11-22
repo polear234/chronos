@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Chronos IDE</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --border:#30363d;
+    --fg:#e6edf3; --dim:#8b949e; --accent:#3ddcae;
+    --accent-dim:#2a9d8f; --err:#ff7b72; --ok:#3fb950;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  header{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;background:var(--panel);
+    border-bottom:1px solid var(--border);flex:0 0 auto;
+  }
+  header .logo{width:26px;height:26px;flex:0 0 auto}
+  header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.3px}
+  header .ver{font-size:11px;color:var(--dim);margin-left:2px}
+  header .spacer{flex:1}
+  #runBtn{
+    background:var(--accent);color:#04120e;border:0;border-radius:8px;
+    padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+  }
+  #runBtn:active{transform:scale(.96)}
+  #runBtn:disabled{opacity:.45}
+  main{flex:1;display:flex;flex-direction:column;min-height:0}
+  .pane{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+  .pane + .pane{border-top:1px solid var(--border)}
+  .pane-bar{
+    display:flex;align-items:center;gap:8px;padding:6px 12px;
+    background:var(--panel);border-bottom:1px solid var(--border);
+    font-size:12px;color:var(--dim);flex:0 0 auto;
+  }
+  .pane-bar .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .pane-bar .spacer{flex:1}
+  textarea{
+    flex:1;width:100%;resize:none;border:0;outline:0;
+    background:var(--bg);color:var(--fg);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    font-size:14px;line-height:1.55;padding:12px 14px;
+    tab-size:2;caret-color:var(--accent);
+  }
+  #out{
+    flex:1;margin:0;padding:12px 14px;overflow:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;
+    background:var(--bg);
+  }
+  #out .err{color:var(--err)}
+  #out .ok{color:var(--ok)}
+  #out .dim{color:var(--dim)}
+  footer{
+    display:flex;gap:8px;padding:8px 12px;background:var(--panel);
+    border-top:1px solid var(--border);flex:0 0 auto;overflow-x:auto;
+  }
+  footer button{
+    background:transparent;color:var(--dim);border:1px solid var(--border);
+    border-radius:7px;padding:7px 12px;font-size:12px;white-space:nowrap;cursor:pointer;
+  }
+  footer button:active{background:var(--border)}
+  .pkgrow{
+    display:flex;align-items:center;gap:8px;padding:6px 12px;
+    background:var(--panel);border-top:1px solid var(--border);flex:0 0 auto;
+    font-size:12px;color:var(--dim);
+  }
+  .pkgrow input{
+    flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+    color:var(--fg);padding:6px 8px;font-size:12px;
+    font-family:ui-monospace,Menlo,monospace;
+  }
+  /* ===== 运行模式：编译产物只显示输出 ===== */
+  body.runtime header{justify-content:center;gap:8px}
+  body.runtime header .ver,
+  body.runtime #runBtn,
+  body.runtime .pkgrow,
+  body.runtime footer,
+  body.runtime .pane-bar,
+  body.runtime .pane:first-of-type,
+  body.runtime #status{display:none !important}
+  body.runtime main{padding:0}
+  body.runtime #out{
+    font-size:15px;line-height:1.7;padding:22px 20px;
+    color:var(--fg);
+  }
+  body.runtime #out .err{color:var(--err)}
+  .status{
+    font-size:11px;color:var(--dim);padding:3px 12px 6px;
+    background:var(--panel);flex:0 0 auto;
+  }
+  .status b{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 100 100" aria-label="Chronos">
+    <path d="M 75 22 A 35 35 0 1 0 75 78" fill="none"
+          stroke="#FFCC00" stroke-width="12" stroke-linecap="round"/>
+    <path d="M 66 33 L 48 50 L 66 67" fill="none"
+          stroke="#FFFFFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Chronos IDE</h1>
+  <span class="ver" id="ver">加载中…</span>
+  <div class="spacer"></div>
+  <button id="runBtn" disabled>▶ 运行</button>
+</header>
+
+<main>
+  <section class="pane">
+    <div class="pane-bar"><span class="dot"></span><span id="fname">main.px</span> <span class="spacer"></span><span id="lines">0 行</span></div>
+    <textarea id="code" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="在这里写 Chronos 代码…"></textarea>
+  </section>
+  <section class="pane">
+    <div class="pane-bar"><span class="dot" style="background:var(--ok)"></span>输出 <span class="spacer"></span>
+      <span id="timing"></span>
+    </div>
+    <pre id="out"><span class="dim">按「运行」执行代码</span></pre>
+  </section>
+</main>
+
+<div class="pkgrow">
+  <span>包名</span>
+  <input id="pkgName" spellcheck="false" autocapitalize="off" autocorrect="off"
+         value="com.chronos.script" placeholder="com.example.myapp">
+</div>
+
+<footer>
+  <button id="importBtn" style="color:var(--accent);border-color:var(--accent-dim)">⬇ 导入</button>
+  <button id="exportBtn" style="color:var(--accent);border-color:var(--accent-dim)">⬆ 导出</button>
+  <button id="apkBtn" style="color:#ffd166;border-color:#8a6d1f">📦 打包 APK</button>
+  <button id="shBtn" style="color:#a5d6ff;border-color:#2f5d8a">🐚 编译 SH</button>
+  <button id="exHello">示例：Hello</button>
+  <button id="exTravel">示例：时间旅行</button>
+  <button id="exOOP">示例：类继承</button>
+  <button id="exPipe">示例：管道</button>
+  <button id="clearBtn">清空输出</button>
+  <button id="clearCode">清空代码</button>
+</footer>
+<div class="status" id="status">正在加载 WASM 运行时…</div>
+
+<script src="wasm_exec.js"></script>
+<script>
+"use strict";
+
+const codeEl   = document.getElementById('code');
+const outEl    = document.getElementById('out');
+const runBtn   = document.getElementById('runBtn');
+const verEl    = document.getElementById('ver');
+const statusEl = document.getElementById('status');
+const linesEl  = document.getElementById('lines');
+const timingEl = document.getElementById('timing');
+
+let ready = false;
+
+const SAMPLES = {
+hello: `print("Hello, Chronos!")
+
+let name = "世界"
+print("你好，" + name)
+
+fn fib(n) {
+    if n <= 1 { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+print("fib(10) = " + str(fib(10)))`,
+
+travel: `// 🕐 变量时间旅行
+let traveller int hp = 100
+print("初始血量: " + str(hp))
+
+hp = 50
+print("受伤后: " + str(hp))
+
+hp.rollback()
+print("时光倒流: " + str(hp))
+
+// 🔄 事务性快照
+let arr = [1, 2, 3]
+withSnapshot([arr], fn() {
+    arr.push(99)
+})
+print("快照恢复后: " + str(arr))`,
+
+oop: `class 动物 {
+    name = ""
+    init(n) { this.name = n }
+    speak() { return this.name + " 发出叫声" }
+}
+
+class 狗 extends 动物 {
+    speak() { return this.name + " 汪汪叫！" }
+}
+
+let d = new 狗("旺财")
+print(d.speak())`,
+
+pipe: `// ⛓️ 管道操作符
+let nums = [1, 2, 3, 4, 5]
+
+let n = nums |> len()
+print("长度: " + str(n))
+
+let doubled = nums |> map(fn(x) { x * 2 })
+print("翻倍: " + str(doubled))
+
+let evens = nums |> filter(fn(x) { x % 2 == 0 })
+print("偶数: " + str(evens))`
+};
+
+// ---- 当前文件名 ----
+let curName = localStorage.getItem('chronos.name') || 'main.px';
+const fnameEl = document.getElementById('fname');
+function setFileName(n){
+  curName = n || 'main.px';
+  fnameEl.textContent = curName;
+  localStorage.setItem('chronos.name', curName);
+}
+setFileName(curName);
+
+// ---- 导入 / 导出（Android 桥）----
+const bridge = window.ChronosBridge;
+const pkgEl = document.getElementById('pkgName');
+{
+  const savedPkg = localStorage.getItem('chronos.pkg');
+  if (savedPkg) pkgEl.value = savedPkg;
+  pkgEl.addEventListener('input', () => localStorage.setItem('chronos.pkg', pkgEl.value.trim()));
+}
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  if (bridge && bridge.pickFile) {
+    bridge.pickFile();
+  } else {
+    alert('导入功能仅在 Android App 内可用');
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const name = curName.endsWith('.px') ? curName : (curName + '.px');
+  if (bridge && bridge.saveFile) {
+    bridge.saveFile(name, codeEl.value);
+  } else {
+    // 浏览器回退：直接下载
+    const blob = new Blob([codeEl.value], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+});
+
+// 打包为 APK
+document.getElementById('apkBtn').addEventListener('click', () => {
+  if (bridge && bridge.compileApk) {
+    statusEl.innerHTML = '正在打包 APK…';
+    bridge.compileApk(curName, pkgEl.value, codeEl.value);
+  } else {
+    alert('打包功能仅在 Android App 内可用');
+  }
+});
+
+// 编译为 shell 脚本
+document.getElementById('shBtn').addEventListener('click', () => {
+  if (bridge && bridge.compileShell) {
+    statusEl.innerHTML = '正在生成 shell 脚本…';
+    bridge.compileShell(curName, codeEl.value);
+  } else {
+    alert('编译 SH 仅在 Android App 内可用');
+  }
+});
+
+window.onShellResult = function(ok, msg) {
+  statusEl.innerHTML = ok
+    ? '✓ ' + msg
+    : '<span style="color:var(--err)">✗ ' + msg + '</span>';
+};
+
+// Android 侧打包结果回调
+window.onApkResult = function(ok, msg) {
+  statusEl.innerHTML = ok
+    ? '✓ ' + msg
+    : '<span style="color:var(--err)">✗ ' + msg + '</span>';
+};
+
+// Android 侧导入完成后的回调
+window.onFileImported = function(name, content) {
+  setFileName(name);
+  codeEl.value = content;
+  localStorage.setItem('chronos.code', content);
+  updateLines();
+  statusEl.innerHTML = '已导入 <b>' + name + '</b>';
+  outEl.innerHTML = '<span class="dim">已导入 ' + name + '，点「运行」执行</span>';
+};
+
+// 恢复上次代码（内嵌脚本优先）
+const saved = localStorage.getItem('chronos.code');
+codeEl.value = saved || SAMPLES.hello;
+
+// ===== 编译产物检测：有 assets/script.px 就进入「运行模式」 =====
+let pendingRuntime = null;
+(async () => {
+  try {
+    const r = await fetch('script.px');
+    if (r.ok) {
+      const t = await r.text();
+      if (t && t.trim().length > 0) {
+        pendingRuntime = t;
+        enterRuntimeMode(t);
+        return;
+      }
+    }
+  } catch (e) { /* 非编译产物 */ }
+})();
+
+function enterRuntimeMode(code) {
+  document.body.classList.add('runtime');
+  codeEl.value = code;
+  document.title = 'Chronos';
+  const h = document.querySelector('header h1');
+  if (h) h.textContent = 'Chronos';
+  outEl.innerHTML = '<span class="dim">正在运行…</span>';
+}
+
+function updateLines(){
+  const n = codeEl.value ? codeEl.value.split('\n').length : 0;
+  linesEl.textContent = n + ' 行';
+}
+updateLines();
+
+codeEl.addEventListener('input', () => {
+  updateLines();
+  localStorage.setItem('chronos.code', codeEl.value);
+});
+
+// ---- WASM 加载 ----
+window.onChronosReady = function(version){
+  ready = true;
+  runBtn.disabled = false;
+  verEl.textContent = 'v' + version.replace('Chronos ', '');
+  statusEl.innerHTML = '运行时已就绪 · <b>' + version + '</b>';
+  // 运行模式：就绪后立即执行
+  if (pendingRuntime !== null) {
+    runCode();
+  }
+};
+
+(async () => {
+  try {
+    const go = new Go();
+    const resp = await fetch('chronos.wasm');
+    const bytes = await resp.arrayBuffer();
+    const mod = await WebAssembly.instantiate(bytes, go.importObject);
+    go.run(mod.instance);          // 内部 main() 会阻塞，不 await
+    setTimeout(() => {
+      if (!ready) statusEl.textContent = '运行时启动失败：未收到就绪回调';
+    }, 3000);
+  } catch (e) {
+    statusEl.textContent = 'WASM 加载失败: ' + e;
+    outEl.innerHTML = '<span class="err">WASM 加载失败: ' + e + '</span>';
+  }
+})();
+
+// ---- 运行 ----
+function runCode(){
+  if (!ready) return;
+  const t0 = performance.now();
+  let res;
+  try {
+    res = JSON.parse(chronosRun(codeEl.value));
+  } catch (e) {
+    outEl.innerHTML = '<span class="err">运行时异常: ' + e + '</span>';
+    return;
+  }
+  const ms = (performance.now() - t0).toFixed(1);
+  timingEl.textContent = ms + ' ms';
+
+  let html = '';
+  if (res.output) html += escapeHtml(res.output);
+  if (res.error) {
+    if (html && !html.endsWith('\n')) html += '\n';
+    html += '<span class="err">' + escapeHtml(res.error) + '</span>';
+  }
+  if (!html) html = '<span class="dim">（无输出）</span>';
+  outEl.innerHTML = html;
+  outEl.scrollTop = outEl.scrollHeight;
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+runBtn.addEventListener('click', runCode);
+
+// ---- 示例 / 工具 ----
+const bind = (id, sample) => document.getElementById(id).addEventListener('click', () => {
+  codeEl.value = SAMPLES[sample];
+  localStorage.setItem('chronos.code', codeEl.value);
+  updateLines();
+  runCode();
+});
+bind('exHello','hello'); bind('exTravel','travel'); bind('exOOP','oop'); bind('exPipe','pipe');
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  outEl.innerHTML = '<span class="dim">（已清空）</span>';
+  timingEl.textContent = '';
+});
+document.getElementById('clearCode').addEventListener('click', () => {
+  codeEl.value = '';
+  localStorage.setItem('chronos.code', '');
+  updateLines();
+  outEl.innerHTML = '<span class="dim">（已清空）</span>';
+});
+
+// Tab 插入两个空格
+codeEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = codeEl.selectionStart, en = codeEl.selectionEnd;
+    codeEl.value = codeEl.value.slice(0, s) + '  ' + codeEl.value.slice(en);
+    codeEl.selectionStart = codeEl.selectionEnd = s + 2;
+    localStorage.setItem('chronos.code', codeEl.value);
+  }
+});
+</script>
+</body>
+</html>
