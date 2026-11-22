@@ -265,6 +265,18 @@ let d = new Dog("Buddy")
 print(d.speak())   // "Buddy barks!"
 ```
 
+### 输入
+
+```chronos
+let name = input("请输入名字: ")   // 显示提示，读取一行
+print("你好，" + name)
+
+let age = int(input("年龄: "))
+print("明年 " + str(age + 1) + " 岁")
+```
+
+> CLI 从 stdin 读；Android IDE 里会弹出输入框。
+
 ### 模块
 
 ```chronos
@@ -288,7 +300,7 @@ print(打招呼(名字))   // 你好，世界
 
 | 分类 | 函数 |
 |------|------|
-| 输出 | `print` `println` |
+| 输入输出 | `print` `println` `input` |
 | 类型 | `type` `int` `float` `str` |
 | 集合 | `len` `push` `pop` `shift` `unshift` `keys` `values` `range` |
 | 高阶 | `map` `filter` `forEach` `reduce` `find`（可被用户函数覆盖） |
@@ -373,6 +385,38 @@ chronos/
 - **无调试器**：只有 `print` 和错误堆栈
 - **编译产物 ≈ 解释器体积**：打包而非 AOT 编译
 - **快照是浅拷贝**：`withSnapshot` 的数组快照只记录长度，元素覆写不会恢复
+
+---
+
+## 🤖 自动发布
+
+推 `v*` tag 会触发 GitHub Actions，自动产出全套发行物：
+
+| Job | 产物 |
+|-----|------|
+| `build` | 六平台二进制（linux / darwin / windows × amd64 / arm64） |
+| `package-windows` | **MSI 安装包**（WiX，自动写入 PATH）+ 便携 ZIP |
+| `package-deb` | Debian / Ubuntu deb 包 |
+| `package-android` | **Android IDE APK**（WebView + WASM） |
+
+### APK 签名配置
+
+在仓库 **Settings → Secrets and variables → Actions** 添加：
+
+```
+ANDROID_KEYSTORE_BASE64 = <你的 keystore 的 base64>
+```
+
+```bash
+# 本地生成（只需一次）
+keytool -genkeypair -keystore chronos.keystore -alias chronos \
+        -keyalg RSA -keysize 2048 -validity 10000 \
+        -storepass android -keypass android \
+        -dname "CN=Chronos, OU=Dev, O=Chronos, C=CN"
+base64 -w0 chronos.keystore    # 复制输出到 Secret
+```
+
+> 不配置也能构建，但会生成临时密钥 —— 产出的 APK **无法覆盖升级**已安装的版本。
 
 ---
 

@@ -1,6 +1,8 @@
 package com.chronos.ide;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -14,9 +16,12 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.JsPromptResult;
+import android.webkit.WebChromeClient;
 import android.webkit.WebViewClient;
 import android.util.Base64;
 import android.util.Log;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -140,6 +145,36 @@ public class MainActivity extends Activity {
                 } catch (IOException e) {
                     return null;
                 }
+            }
+        });
+
+        // JS prompt() → 原生输入框（供 Chronos 的 input() 使用）
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsPrompt(WebView view, String url, String message,
+                                      String defaultValue, final JsPromptResult result) {
+                final EditText et = new EditText(MainActivity.this);
+                et.setText(defaultValue == null ? "" : defaultValue);
+                et.setSelection(et.getText().length());
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Chronos 输入")
+                        .setMessage(message == null ? "" : message)
+                        .setView(et)
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) {
+                                result.confirm(et.getText().toString());
+                            }
+                        })
+                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) {
+                                result.cancel();
+                            }
+                        })
+                        .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                            @Override public void onCancel(DialogInterface d) { result.cancel(); }
+                        })
+                        .show();
+                return true;
             }
         });
 

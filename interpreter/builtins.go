@@ -20,6 +20,16 @@ var builtins = map[string]*object.Builtin{
 			return NIL
 		},
 	},
+	"input": {
+		Fn: func(args ...object.Object) object.Object {
+			prompt := ""
+			if len(args) > 0 {
+				prompt = args[0].Inspect()
+			}
+			return &object.String{Value: ReadInput(prompt)}
+		},
+	},
+
 	"println": {
 		Fn: func(args ...object.Object) object.Object {
 			parts := make([]string, 0, len(args))

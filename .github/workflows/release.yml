@@ -48,7 +48,7 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -n "$VERSION" ] || VERSION="0.2.1"
+          [ -n "$VERSION" ] || VERSION="0.2.2"
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"
           mkdir -p dist
@@ -96,7 +96,7 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
-          if (-not $VERSION) { $VERSION = "0.2.1" }
+          if (-not $VERSION) { }
           $wix = "${{ steps.wix.outputs.bin }}"
           $src = "$PWD\dist\chronos-windows-${{ matrix.arch }}.exe"
           New-Item -ItemType Directory -Force -Path obj | Out-Null
@@ -114,7 +114,7 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
-          if (-not $VERSION) { $VERSION = "0.2.1" }
+          if (-not $VERSION) { }
           $tmp = "portable"
           New-Item -ItemType Directory -Force -Path $tmp | Out-Null
           Copy-Item "dist/chronos-windows-${{ matrix.arch }}.exe" "$tmp/chronos.exe"
@@ -147,7 +147,7 @@ jobs:
       - name: Build deb
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -n "$VERSION" ] || VERSION="0.2.1"
+          [ -n "$VERSION" ] || VERSION="0.2.2"
           ARCH="${{ matrix.arch }}"
           PKG="$(mktemp -d)"
           mkdir -p "$PKG/DEBIAN" "$PKG/usr/local/bin"
@@ -176,9 +176,80 @@ jobs:
           path: dist/*.deb
           retention-days: 7
 
-  # ── 5. 汇总发布 ─────────────────────────────────────────
+  # ── 5. Android: IDE APK（WebView + WASM + 打包器） ──────
+  package-android:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Read version
+        id: ver
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          [ -n "$V" ] || V="0.2.2"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Build WASM runtime
+        run: |
+          GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" \
+            -o android/app/src/main/assets/chronos.wasm .
+
+      - name: Build SH kernel (arm64)
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
+            -ldflags "-s -w -X main.version=${{ steps.ver.outputs.version }}" \
+            -o android/app/src/main/assets/chronos-linux-arm64 .
+
+      - name: Setup Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" "platforms;android-34" >/dev/null 2>&1 || true
+          ls "$SDK/build-tools/" "$SDK/platforms/" || true
+
+      - name: Restore signing keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > android/chronos.keystore
+            echo "✓ 使用 Secrets 中的签名密钥"
+          else
+            echo "::warning::未配置 ANDROID_KEYSTORE_BASE64 —— 将生成临时密钥，产出 APK 无法覆盖升级"
+          fi
+
+      - name: Sync version into manifests
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          sed -i "s/android:versionName=\"[^\"]*\"/android:versionName=\"$V\"/" \
+            android/app/src/main/AndroidManifest.xml \
+            android/template/AndroidManifest.xml || true
+
+      - name: Build template APK
+        run: |
+          chmod +x android/build-apk.sh
+          ./android/build-apk.sh --template /tmp/template.apk
+
+      - name: Build IDE APK
+        run: |
+          cp /tmp/template.apk android/app/src/main/assets/template.apk
+          mkdir -p dist
+          ./android/build-apk.sh "dist/chronos-ide-${{ steps.ver.outputs.version }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-android
+          path: dist/*.apk
+          retention-days: 7
+
+  # ── 6. 汇总发布 ─────────────────────────────────────────
   release:
-    needs: [ build, package-windows, package-deb ]
+    needs: [ build, package-windows, package-deb, package-android ]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:

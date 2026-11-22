@@ -22,6 +22,15 @@ type runResult struct {
 }
 
 func main() {
+	// 输入：调用 JS 的 prompt()（Android 里由 WebChromeClient 弹框）
+	interpreter.SetInput(func(prompt string) string {
+		v := js.Global().Call("prompt", prompt)
+		if v.Type() == js.TypeNull || v.Type() == js.TypeUndefined {
+			return ""
+		}
+		return v.String()
+	})
+
 	js.Global().Set("chronosRun", js.FuncOf(runJS))
 	js.Global().Set("chronosVersion", js.FuncOf(func(this js.Value, args []js.Value) any {
 		return "Chronos " + version
