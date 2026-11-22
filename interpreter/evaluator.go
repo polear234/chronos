@@ -597,12 +597,29 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return evalNumberInfixExpression(operator, left, right)
 	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
 		return evalStringInfixExpression(operator, left, right)
+	case operator == "&&" || operator == "and":
+		return nativeBoolToBooleanObject(logicalTruthy(left) && logicalTruthy(right))
+	case operator == "||" || operator == "or":
+		return nativeBoolToBooleanObject(logicalTruthy(left) || logicalTruthy(right))
 	case operator == "==":
 		return nativeBoolToBooleanObject(objectsEqual(left, right))
 	case operator == "!=":
 		return nativeBoolToBooleanObject(!objectsEqual(left, right))
 	default:
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
+	}
+}
+
+// logicalTruthy 用于 && / || 的真假判定：
+// 数字 0 为假（与整数运算里的 l != 0 保持一致），其余沿用 isTruthy。
+func logicalTruthy(obj object.Object) bool {
+	switch o := obj.(type) {
+	case *object.Integer:
+		return o.Value != 0
+	case *object.Float:
+		return o.Value != 0
+	default:
+		return isTruthy(obj)
 	}
 }
 

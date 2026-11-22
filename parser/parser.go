@@ -197,6 +197,9 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 		}
 		p.nextToken()
 	}
+	if p.curTokenIs(token.EOF) {
+		p.errors = append(p.errors, fmt.Sprintf("line %d: expected } but reached end of input", p.curToken.Line))
+	}
 	return block
 }
 

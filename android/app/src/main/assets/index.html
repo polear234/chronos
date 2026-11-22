@@ -259,24 +259,47 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   }
 });
 
+// 编译前语法检查：像 C++ 一样，语法错误直接拒绝，不产出可执行文件
+function syntaxCheck(label) {
+  if (typeof chronosCheck !== 'function' || !ready) {
+    statusEl.innerHTML = '<span style="color:var(--err)">✗ ' + label + '失败：运行时尚未就绪</span>';
+    return false;
+  }
+  let r;
+  try {
+    r = JSON.parse(chronosCheck(codeEl.value));
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:var(--err)">✗ ' + label + '失败：检查异常 ' + escapeHtml(String(e)) + '</span>';
+    return false;
+  }
+  if (!r.ok) {
+    const lines = (r.errors || [r.error]).filter(Boolean).join('\n');
+    outEl.innerHTML = '<span class="err">编译错误（共 ' + (r.count || 1) + ' 处）：\n' + escapeHtml(lines) + '\n\n已拒绝' + label + '，请先修复语法错误。</span>';
+    statusEl.innerHTML = '<span style="color:var(--err)">✗ 语法错误，已拒绝' + label + '</span>';
+    return false;
+  }
+  statusEl.innerHTML = '语法检查通过，正在' + label + '…';
+  return true;
+}
+
 // 打包为 APK
 document.getElementById('apkBtn').addEventListener('click', () => {
-  if (bridge && bridge.compileApk) {
-    statusEl.innerHTML = '正在打包 APK…';
-    bridge.compileApk(curName, pkgEl.value, codeEl.value);
-  } else {
+  if (!(bridge && bridge.compileApk)) {
     alert('打包功能仅在 Android App 内可用');
+    return;
   }
+  if (!syntaxCheck('打包 APK')) return;
+  bridge.compileApk(curName, pkgEl.value, codeEl.value);
 });
 
 // 编译为 shell 脚本
 document.getElementById('shBtn').addEventListener('click', () => {
-  if (bridge && bridge.compileShell) {
-    statusEl.innerHTML = '正在生成 shell 脚本…';
-    bridge.compileShell(curName, codeEl.value);
-  } else {
+  if (!(bridge && bridge.compileShell)) {
     alert('编译 SH 仅在 Android App 内可用');
+    return;
   }
+  if (!syntaxCheck('生成 SH')) return;
+  bridge.compileShell(curName, codeEl.value);
 });
 
 window.onShellResult = function(ok, msg) {

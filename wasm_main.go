@@ -32,6 +32,7 @@ func main() {
 	})
 
 	js.Global().Set("chronosRun", js.FuncOf(runJS))
+	js.Global().Set("chronosCheck", js.FuncOf(checkJS))
 	js.Global().Set("chronosVersion", js.FuncOf(func(this js.Value, args []js.Value) any {
 		return "Chronos " + version
 	}))
@@ -51,6 +52,25 @@ func runJS(this js.Value, args []js.Value) any {
 	}
 	res := execute(src)
 	b, _ := json.Marshal(res)
+	return string(b)
+}
+
+// checkJS 只做语法解析，不执行程序（用于编译前校验，等价于 C++ 的编译期检查）
+func checkJS(this js.Value, args []js.Value) any {
+	src := ""
+	if len(args) > 0 {
+		src = args[0].String()
+	}
+	l := lexer.New(src)
+	p := parser.New(l)
+	p.ParseProgram()
+	errs := p.Errors()
+	b, _ := json.Marshal(struct {
+		OK    bool     `json:"ok"`
+		Error string   `json:"error"`
+		Count int      `json:"count"`
+		Errs  []string `json:"errors"`
+	}{OK: len(errs) == 0, Count: len(errs), Errs: errs, Error: strings.Join(errs, "\n")})
 	return string(b)
 }
 

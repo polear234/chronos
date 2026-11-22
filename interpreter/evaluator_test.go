@@ -1084,3 +1084,24 @@ flag`
 		testIntegerObject(t, testEval(t, input), 0)
 	})
 }
+
+func TestBooleanLogic(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{`if true || false { 1 } else { 0 }`, 1},
+		{`if true or false { 1 } else { 0 }`, 1},
+		{`if false || false { 1 } else { 0 }`, 0},
+		{`if false or false { 1 } else { 0 }`, 0},
+		{`if true && false { 1 } else { 0 }`, 0},
+		{`if true and false { 1 } else { 0 }`, 0},
+		{`if true && true { 1 } else { 0 }`, 1},
+		{`if 0 || 5 { 1 } else { 0 }`, 1},
+		{`if true && 1 { 1 } else { 0 }`, 1},
+		{`if false || 3 { 1 } else { 0 }`, 1},
+	}
+	for _, tt := range tests {
+		testIntegerObject(t, testEval(t, tt.input), tt.expected)
+	}
+}
