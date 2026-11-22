@@ -19,4 +19,5 @@ Thumbs.db
 /android/app/src/main/assets/chronos.wasm
 /android/app/src/main/assets/template.apk
 /android/app/src/main/assets/chronos-linux-arm64
-/android/app/src/main/assets/chronos.keystore
+# chronos.keystore 是内置签名密钥（密码固定为 android，非秘密），
+# 必须随仓库分发，否则 IDE 运行时编译 APK 会找不到它。

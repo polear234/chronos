@@ -266,18 +266,13 @@ jobs:
           KS=android/chronos.keystore
           if [ -n "$KS_B64" ]; then
             echo "$KS_B64" | base64 -d > "$KS"
-            echo "✓ 使用 Secrets 中的签名密钥"
+            # IDE 运行时给脚本编译的 APK 签名用 assets 里同一把钥匙
+            cp "$KS" android/app/src/main/assets/chronos.keystore
+            echo "✓ 使用 Secrets 中的签名密钥（已同步到 assets）"
           else
-            echo "::warning::未配置 ANDROID_KEYSTORE_BASE64 —— 将生成临时密钥，产出 APK 无法覆盖升级"
-            keytool -genkeypair -keystore "$KS" -alias chronos -keyalg RSA -keysize 2048 \
-              -storetype PKCS12 -validity 10000 -storepass android -keypass android \
-              -dname "CN=Chronos IDE, OU=Dev, O=Chronos, L=CN, ST=CN, C=CN" >/dev/null 2>&1
+            echo "✓ 使用仓库内置的 chronos.keystore（assets 与 android/ 各一份）"
+            # 确保 build-apk.sh 签名 IDE 用的也是同一把（仓库已带 android/chronos.keystore）
           fi
-          # IDE 运行时给脚本编译的 APK 签名需要内置 keystore（getAssets().open）
-          # 必须与签名 IDE 用的是同一把钥匙，否则运行时找不到
-          mkdir -p android/app/src/main/assets
-          cp "$KS" android/app/src/main/assets/chronos.keystore
-          echo "✓ 已内置 keystore 到 assets"
 
       - name: Sync version into manifests
         run: |
