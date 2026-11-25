@@ -24,6 +24,15 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of Chronos is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
+    <!-- 安装向导 UI：欢迎页 → 许可证 → 安装进度 → 完成页
+         需要 light.exe 链接 WixUIExtension -->
+    <UIRef Id="WixUI_Minimal" />
+    <!-- 完成页上显示的文字：明确告知安装成功以及怎么用 -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
+              Value="Chronos 已安装完成。&#xD;&#xA;&#xD;&#xA;打开新的命令提示符，输入 chronos 即可使用（PATH 已自动配置）。" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.license)" />
+
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLDIR" Name="Chronos">

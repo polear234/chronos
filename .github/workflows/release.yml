@@ -107,11 +107,13 @@ jobs:
           $src = "$PWD\dist\chronos-windows-${{ matrix.arch }}.exe"
           New-Item -ItemType Directory -Force -Path obj | Out-Null
           # WiX v3 的 -d 变量名区分大小写，需与 .wxs 中的 $(var.source)/$(var.version) 一致
+          $lic = "$PWD\scripts\msi\LICENSE.rtf"
           & "$wix\candle.exe" -dsource="$src" -dversion="$VERSION" `
-            -darch="${{ matrix.arch }}" `
+            -darch="${{ matrix.arch }}" -dlicense="$lic" `
             -out "obj\chronos-${{ matrix.arch }}.wixobj" scripts/msi/chronos.wxs
           if ($LASTEXITCODE -ne 0) { throw "candle 失败" }
-          & "$wix\light.exe" `
+          # -ext WixUIExtension：提供 WixUI_Minimal 安装向导（欢迎页/完成页）
+          & "$wix\light.exe" -ext WixUIExtension `
             -out "dist/chronos-$VERSION-windows-${{ matrix.arch }}.msi" `
             "obj\chronos-${{ matrix.arch }}.wixobj"
           if ($LASTEXITCODE -ne 0) { throw "light 失败" }
