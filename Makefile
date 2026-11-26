@@ -1,6 +1,6 @@
 .PHONY: build run test clean dist install all
 
-BINARY := chronos
+BINARY := chr
 VERSION := 0.3.2
 
 # 默认：编译出完全独立的静态二进制（无外部依赖，可直接拷贝到任何同架构 Linux 运行）
@@ -31,12 +31,12 @@ clean:
 dist:
 	@mkdir -p dist
 	@echo "=== 编译多平台独立二进制 ==="
-	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chronos-linux-amd64 .
-	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chronos-linux-arm64 .
-	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chronos-darwin-amd64 .
-	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chronos-darwin-arm64 .
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chronos-windows-amd64.exe .
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chronos-windows-arm64.exe .
+	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-linux-amd64 .
+	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-linux-arm64 .
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-darwin-amd64 .
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-darwin-arm64 .
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-windows-amd64.exe .
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-windows-arm64.exe .
 	@echo "=== 完成，产物在 dist/ ==="
 	@ls -lh dist/
 

@@ -258,7 +258,7 @@ public class MainActivity extends Activity {
             new Thread(new Runnable() {
                 @Override public void run() {
                     try {
-                        InputStream in = getAssets().open("chronos-linux-arm64");
+                        InputStream in = getAssets().open("chr-linux-arm64");
                         byte[] bin = readAllBytes(in);
                         in.close();
                         String b64 = Base64.encodeToString(bin, Base64.NO_WRAP);
@@ -269,14 +269,14 @@ public class MainActivity extends Activity {
                         sb.append("set -e\n");
                         sb.append("WORK=\"$(mktemp -d \"${TMPDIR:-/tmp}/chronos.XXXXXX\")\"\n");
                         sb.append("trap 'rm -rf \"$WORK\"' EXIT INT TERM\n");
-                        sb.append("base64 -d > \"$WORK/chronos\" <<'__CHRONOS_BIN__'\n");
+                        sb.append("base64 -d > \"$WORK/chr\" <<'__CHRONOS_BIN__'\n");
                         sb.append(b64).append("\n");
                         sb.append("__CHRONOS_BIN__\n");
-                        sb.append("chmod +x \"$WORK/chronos\"\n");
+                        sb.append("chmod +x \"$WORK/chr\"\n");
                         sb.append("cat > \"$WORK/app.chr\" <<'__CHRONOS_SRC__'\n");
                         sb.append(script).append("\n");
                         sb.append("__CHRONOS_SRC__\n");
-                        sb.append("\"$WORK/chronos\" -run \"$WORK/app.chr\"\n");
+                        sb.append("\"$WORK/chr\" -run \"$WORK/app.chr\"\n");
 
                         File out = new File(getCacheDir(), "app.sh");
                         FileOutputStream fos = new FileOutputStream(out);

@@ -56,7 +56,7 @@ jobs:
           [ "$GOOS" = "windows" ] && EXT=".exe"
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X main.version=$VERSION" \
-            -o "dist/chronos-${GOOS}-${GOARCH}${EXT}" .
+            -o "dist/chr-${GOOS}-${GOARCH}${EXT}" .
           ls -lh dist/*
 
       - uses: actions/upload-artifact@v4
@@ -104,7 +104,7 @@ jobs:
             $VERSION = ((Select-String -Path Makefile -Pattern '^VERSION\s*:=').Line -split ':=')[1].Trim()
           }
           $wix = "${{ steps.wix.outputs.bin }}"
-          $src = "$PWD\dist\chronos-windows-${{ matrix.arch }}.exe"
+          $src = "$PWD\dist\chr-windows-${{ matrix.arch }}.exe"
           New-Item -ItemType Directory -Force -Path obj | Out-Null
           # WiX v3 的 -d 变量名区分大小写，需与 .wxs 中的 $(var.source)/$(var.version) 一致
           $lic = "$PWD\scripts\msi\LICENSE.rtf"
@@ -114,7 +114,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "candle 失败" }
           # -ext WixUIExtension：提供 WixUI_Minimal 安装向导（欢迎页/完成页）
           & "$wix\light.exe" -ext WixUIExtension `
-            -out "dist/chronos-$VERSION-windows-${{ matrix.arch }}.msi" `
+            -out "dist/chr-$VERSION-windows-${{ matrix.arch }}.msi" `
             "obj\chronos-${{ matrix.arch }}.wixobj"
           if ($LASTEXITCODE -ne 0) { throw "light 失败" }
 
@@ -128,11 +128,11 @@ jobs:
           }
           $tmp = "portable"
           New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-          Copy-Item "dist/chronos-windows-${{ matrix.arch }}.exe" "$tmp/chronos.exe"
+          Copy-Item "dist/chr-windows-${{ matrix.arch }}.exe" "$tmp/chr.exe"
           Copy-Item README.md, LICENSE "$tmp/"
           if (Test-Path examples) { Copy-Item examples "$tmp/examples" -Recurse }
           Compress-Archive -Path "$tmp/*" `
-            -DestinationPath "dist/chronos-$VERSION-windows-${{ matrix.arch }}.zip" -Force
+            -DestinationPath "dist/chr-$VERSION-windows-${{ matrix.arch }}.zip" -Force
 
       - uses: actions/upload-artifact@v4
         with:
@@ -167,10 +167,10 @@ jobs:
           ARCH="${{ matrix.arch }}"
           PKG="$(mktemp -d)"
           mkdir -p "$PKG/DEBIAN" "$PKG/usr/local/bin"
-          cp "dist/chronos-linux-$ARCH" "$PKG/usr/local/bin/chronos"
-          chmod 755 "$PKG/usr/local/bin/chronos"
+          cp "dist/chr-linux-$ARCH" "$PKG/usr/local/bin/chr"
+          chmod 755 "$PKG/usr/local/bin/chr"
           cat > "$PKG/DEBIAN/control" <<EOF
-          Package: chronos
+          Package: chr
           Version: $VERSION
           Section: devel
           Priority: optional
@@ -183,7 +183,7 @@ jobs:
            pipe operator, classes with inheritance, and a module system.
           EOF
           dpkg-deb --build --root-owner-group "$PKG" \
-            "dist/chronos_${VERSION}_${ARCH}.deb"
+            "dist/chr_${VERSION}_${ARCH}.deb"
           rm -rf "$PKG"
 
       - uses: actions/upload-artifact@v4
@@ -221,7 +221,7 @@ jobs:
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
             -ldflags "-s -w -X main.version=${{ steps.ver.outputs.version }}" \
-            -o android/app/src/main/assets/chronos-linux-arm64 .
+            -o android/app/src/main/assets/chr-linux-arm64 .
 
       - name: Use JDK 17
         uses: actions/setup-java@v4
@@ -326,7 +326,7 @@ jobs:
             printf '用 Go 手写的轻量脚本语言：变量时间旅行 `rollback()`、`withSnapshot`、管道 `|>`、类继承、模式匹配、import 模块。\n\n'
             printf '### 下载\n\n'
             printf '| 平台 | 文件 |\n|---|---|\n'
-            for f in dist/chronos-* dist/*.deb; do
+            for f in dist/chr-* dist/*.deb dist/chronos-ide-*.apk; do
               case "$f" in *SHA256*) continue;; esac
               [ -f "$f" ] || continue
               printf '| %s | `%s` |\n' "$(basename "$f")" "$(basename "$f")"
@@ -334,9 +334,9 @@ jobs:
             printf '\n### 快速开始\n\n'
             printf '**Windows**：下载 `.msi` 双击安装（自动加入 PATH），或 `.zip` 解压即用。\n\n'
             printf '```bash\n'
-            printf 'chmod +x chronos-linux-arm64\n'
-            printf './chronos-linux-arm64 run examples/hello.chr\n'
-            printf './chronos-linux-arm64          # 进入 REPL\n'
+            printf 'chmod +x chr-linux-arm64\n'
+            printf './chr-linux-arm64 run examples/hello.chr\n'
+            printf './chr-linux-arm64          # 进入 REPL\n'
             printf '```\n\n'
             printf '单文件静态二进制，无运行时依赖。校验和见 `SHA256SUMS.txt`。\n'
           } > NOTES.md

@@ -94,7 +94,7 @@ let evens = [1,2,3,4,5]
 
 这是 0.2 版本的新能力：**把脚本变成真正的安卓应用**。
 
-> APK / SH 编译由手机端的 **Chronos IDE** 提供；CLI 的 `chronos build` 只生成桌面可执行文件。
+> APK / SH 编译由手机端的 **Chronos IDE** 提供；CLI 的 `chr build` 只生成桌面可执行文件。
 
 在 Chronos IDE 里写好代码，点按钮即可：
 
@@ -125,8 +125,8 @@ let evens = [1,2,3,4,5]
 
 | 方式 | 文件 | 说明 |
 |------|------|------|
-| **MSI 安装包** | `chronos-0.3.2-windows-amd64.msi` | 双击安装到 `Program Files\Chronos` |
-| **便携版 ZIP** | `chronos-0.3.2-windows-amd64.zip` | 解压即用，无需安装 |
+| **MSI 安装包** | `chr-0.3.2-windows-amd64.msi` | 双击安装到 `Program Files\Chr` |
+| **便携版 ZIP** | `chr-0.3.2-windows-amd64.zip` | 解压即用，无需安装 |
 | **PowerShell** | `install.ps1` | `.\install.ps1` 用户级安装 |
 
 > ARM64 Windows（如 Surface Pro X）把文件名里的 `amd64` 换成 `arm64`。
@@ -135,8 +135,8 @@ let evens = [1,2,3,4,5]
 
 ```bash
 # deb 包（Ubuntu / Debian）
-sudo dpkg -i chronos_0.3.2_amd64.deb     # x86_64
-sudo dpkg -i chronos_0.3.2_arm64.deb     # arm64（树莓派 / 手机）
+sudo dpkg -i chr_0.3.2_amd64.deb     # x86_64
+sudo dpkg -i chr_0.3.2_arm64.deb     # arm64（树莓派 / 手机）
 
 # 或安装脚本
 sudo ./install.sh          # 系统级 → /usr/local/bin
@@ -147,10 +147,10 @@ sudo ./install.sh          # 系统级 → /usr/local/bin
 
 ```bash
 # Apple Silicon
-chmod +x chronos-darwin-arm64 && sudo mv chronos-darwin-arm64 /usr/local/bin/chronos
+chmod +x chr-darwin-arm64 && sudo mv chr-darwin-arm64 /usr/local/bin/chr
 
 # Intel
-chmod +x chronos-darwin-amd64 && sudo mv chronos-darwin-amd64 /usr/local/bin/chronos
+chmod +x chr-darwin-amd64 && sudo mv chr-darwin-amd64 /usr/local/bin/chr
 ```
 
 ### Android
@@ -162,7 +162,7 @@ chmod +x chronos-darwin-amd64 && sudo mv chronos-darwin-amd64 /usr/local/bin/chr
 ```bash
 git clone https://github.com/polear234/chronos.git
 cd chronos
-go build -o chronos .      # 需要 Go 1.21+，零第三方依赖
+go build -o chr .      # 需要 Go 1.21+，零第三方依赖
 ```
 
 ---
@@ -181,7 +181,7 @@ print("fib(10) = " + str(fib(10)))   // 55
 ```
 
 ```bash
-chronos run hello.chr
+chr run hello.chr
 # Hello, Chronos!
 # fib(10) = 55
 ```
@@ -371,19 +371,19 @@ h.length()  h.keys()  h.values()  h.has("k")
 ## 💻 命令行
 
 ```bash
-chronos run app.chr          # 运行脚本
-chronos build app.chr        # 编译成独立可执行文件
-chronos build app.chr -p     # 明文模式（默认加密混淆）
-chronos build app.chr -o out # 指定输出名
+chr run app.chr          # 运行脚本
+chr build app.chr        # 编译成独立可执行文件
+chr build app.chr -p     # 明文模式（默认加密混淆）
+chr build app.chr -o out # 指定输出名
 chronos repl                # 交互式 REPL
-chronos version             # 查看版本
+chr version             # 查看版本
 chronos help                # 帮助
 ```
 
 ### 编译产物
 
 ```bash
-chronos build examples/hello.chr -o hello
+chr build examples/hello.chr -o hello
 ./hello        # 独立运行，不依赖源码
 ```
 
@@ -475,6 +475,13 @@ make test          # 同上
 ```
 
 ---
+
+## 📚 模块与扩展
+
+- **[模块开发指南](docs/MODULES.md)** —— 写可复用的 `.chr` 模块，打包成 `.chm` 发布
+- 内置模块：`import "os"`（文件/命令）、`import "math"`（数学）
+- 安装第三方包：`chr install 包名` / `chr install 包.chm`
+- 查看已安装：`chr packages`
 
 ## 📄 许可证
 

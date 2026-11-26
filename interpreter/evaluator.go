@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -99,6 +100,12 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 		return evalPrefixExpression(node.Operator, right)
 	case *ast.InfixExpression:
+		// C++ 风格数据流单独处理：
+		//   prints << expr   → 输出
+		//   inputs >> ident  → 读入到已有变量（右侧不求值，按变量名赋值）
+		if node.Operator == "<<" || node.Operator == ">>" {
+			return evalStreamExpression(node, env)
+		}
 		left := Eval(node.Left, env)
 		if isError(left) {
 			return left
@@ -182,8 +189,27 @@ func evalLetStatement(stmt *ast.LetStatement, env *object.Environment) object.Ob
 		env.DefineTyped(stmt.Name.Value, val, stmt.VarType)
 	} else {
 		env.Define(stmt.Name.Value, val)
+		// 没有显式类型时按初值推断，让 inputs >> 知道该按什么读
+		if inferred := inferVarType(val); inferred != "" {
+			env.DefineVarType(stmt.Name.Value, inferred)
+		}
 	}
 	return NIL
+}
+
+// inferVarType 根据值推断变量类型，供 inputs >> 这类需要类型信息的场景使用
+func inferVarType(val object.Object) string {
+	switch val.(type) {
+	case *object.Integer:
+		return "int"
+	case *object.Float:
+		return "float"
+	case *object.String:
+		return "string"
+	case *object.Boolean:
+		return "bool"
+	}
+	return ""
 }
 
 // coerceToType 在赋值给【类型化变量】时做隐式转换：
@@ -541,10 +567,19 @@ func applyFunction(fn object.Object, args []object.Object, env *object.Environme
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
 	env := object.NewEnclosedEnvironment(fn.Env)
 	for i, param := range fn.Parameters {
+		var val object.Object
 		if i < len(args) {
-			env.Define(param.Value, args[i])
+			val = args[i]
 		} else {
-			env.Define(param.Value, NIL)
+			val = NIL
+		}
+		// C++ 风格参数类型：int a → 传参时做隐式转换
+		if param.TypeHint != "" && val != NIL {
+			val = coerceToType(val, param.TypeHint)
+		}
+		env.Define(param.Value, val)
+		if param.TypeHint != "" {
+			env.DefineVarType(param.Value, param.TypeHint)
 		}
 	}
 	return env
@@ -587,6 +622,70 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 	default:
 		return newError("unknown operator: %s%s", operator, right.Type())
 	}
+}
+
+// evalStreamExpression 处理 C++ 风格数据流：
+//   prints << expr       把值输出到标准输出
+//   inputs >> name       从标准输入读一行，写进已声明的变量
+// inputs 右侧必须是已定义类型的变量名，否则报错。
+func evalStreamExpression(node *ast.InfixExpression, env *object.Environment) object.Object {
+	switch node.Operator {
+	case "<<":
+		// prints << x：左操作数必须是 prints / cout 标识符
+		leftIdent, ok := node.Left.(*ast.Identifier)
+		if !ok {
+			return newError("数据流输出要写成 prints << 值")
+		}
+		if leftIdent.Value != "prints" && leftIdent.Value != "cout" {
+			return newError("数据流输出请用 prints << 值，收到 %s <<", leftIdent.Value)
+		}
+		val := Eval(node.Right, env)
+		if isError(val) {
+			return val
+		}
+		fmt.Fprintln(outputWriter, val.Inspect())
+		return NIL
+
+	case ">>":
+		// inputs >> name：右侧必须是变量名，不能先求值
+		ident, ok := node.Right.(*ast.Identifier)
+		if !ok {
+			return newError("inputs >> 右边要写变量名，不能是表达式")
+		}
+		// 变量必须先声明类型（用户明确要求）
+		varType := env.GetVarType(ident.Value)
+		if varType == "" {
+			if _, defined := env.Get(ident.Value); !defined {
+				return newError("inputs >> %s：变量还没声明，请先写 let %s = 0", ident.Value, ident.Value)
+			}
+			return newError("inputs >> %s：变量 %s 没有类型，请先写成 let %s = 0 这样带初值", ident.Value, ident.Value, ident.Value)
+		}
+
+		raw := ReadInput("")
+		var val object.Object
+		switch varType {
+		case "int":
+			n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+			if err != nil {
+				return newError("inputs >> %s：期望整数，收到 %q", ident.Value, raw)
+			}
+			val = &object.Integer{Value: n}
+		case "float":
+			f, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+			if err != nil {
+				return newError("inputs >> %s：期望小数，收到 %q", ident.Value, raw)
+			}
+			val = &object.Float{Value: f}
+		case "bool":
+			t := strings.TrimSpace(raw)
+			val = nativeBoolToBooleanObject(t == "true" || t == "1" || t == "yes")
+		default:
+			val = &object.String{Value: raw}
+		}
+		env.Set(ident.Value, val)
+		return NIL
+	}
+	return NIL
 }
 
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
@@ -1409,9 +1508,19 @@ func evalImportStatement(is *ast.ImportStatement, env *object.Environment) objec
 	}
 	modPath := is.Module.Value
 
-	// 解析模块文件完整路径
+	// 先尝试按文件解析（用户自己的模块优先）
 	fullPath := resolveModulePath(modPath, env.ImportDir)
+
+	// 没有对应文件时才用内置模块：import "os" / import "math"
 	if fullPath == "" {
+		if mod := lookupBuiltinModule(modPath); mod != nil {
+			bindName := strings.TrimSuffix(filepath.Base(modPath), filepath.Ext(modPath))
+			if is.Alias != nil {
+				bindName = is.Alias.Value
+			}
+			env.Define(bindName, mod)
+			return mod
+		}
 		return newError("cannot resolve import path: %s", modPath)
 	}
 
@@ -1500,6 +1609,37 @@ func resolveModulePath(modPath, baseDir string) string {
 	for _, c := range candidates {
 		if moduleFileExists(c) {
 			return c
+		}
+	}
+
+	// 本地找不到时，查已安装的第三方包：~/.chronos/packages/<name>/
+	// 支持 import "mypkg" 和 import "mypkg/sub"
+	if home, err := os.UserHomeDir(); err == nil {
+		pkgDir := filepath.Join(home, ".chronos", "packages", modPath)
+		if moduleFileExists(pkgDir) {
+			return pkgDir
+		}
+		for _, ext := range []string{".chr", ".px"} {
+			if moduleFileExists(pkgDir + ext) {
+				return pkgDir + ext
+			}
+			indexPath := filepath.Join(pkgDir, "index"+ext)
+			if moduleFileExists(indexPath) {
+				return indexPath
+			}
+		}
+		// 包有 manifest 时按 manifest.main 找
+		mfPath := filepath.Join(pkgDir, "manifest.json")
+		if data, err := os.ReadFile(mfPath); err == nil {
+			var mf struct {
+				Main string `json:"main"`
+			}
+			if json.Unmarshal(data, &mf) == nil && mf.Main != "" {
+				mainPath := filepath.Join(pkgDir, mf.Main)
+				if moduleFileExists(mainPath) {
+					return mainPath
+				}
+			}
 		}
 	}
 	return ""

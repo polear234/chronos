@@ -123,7 +123,7 @@ shutil.copy(os.path.join(build, "base.apk"), out)
 skip = {"template.apk", "chronos.keystore"} if bare else set()
 if bare:
     # 模板/裸版不需要 sh 编译内核（只有 IDE 需要）
-    skip.add("chronos-linux-arm64")
+    skip.add("chr-linux-arm64")
 with zipfile.ZipFile(out, "a", zipfile.ZIP_DEFLATED) as z:
     z.write(os.path.join(build, "dex", "classes.dex"), "classes.dex")
     for root, _, files in os.walk(assets):

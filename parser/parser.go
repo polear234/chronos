@@ -98,8 +98,88 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.CONTINUE:
 		return &ast.ContinueStatement{Token: p.curToken}
 	default:
+		// C++ 风格函数定义：int faction(参数) { ... }
+		// 形如 <类型名> <函数名> ( 开头时按函数定义解析
+		if p.curTokenIs(token.IDENT) && p.peekTokenIs(token.IDENT) && p.isTypeName(p.curToken.Literal) {
+			return p.parseCStyleFunctionStatement()
+		}
 		return p.parseExpressionStatement()
 	}
+}
+
+// isTypeName 判断是否是内置类型名（用于识别 C++ 风格函数定义）
+func (p *Parser) isTypeName(s string) bool {
+	switch s {
+	case "int", "float", "string", "str", "bool", "void", "any":
+		return true
+	}
+	return false
+}
+
+// parseCStyleFunctionStatement 解析 C++ 风格函数定义：
+//   int add(int a, int b) { return a + b }
+// 当前 curToken 是返回类型，peekToken 是函数名。
+func (p *Parser) parseCStyleFunctionStatement() ast.Statement {
+	retType := p.curToken.Literal
+	p.nextToken() // curToken: 函数名
+	nameTok := p.curToken
+
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+	params := p.parseTypedFunctionParameters()
+	if params == nil {
+		return nil
+	}
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+	body := p.parseBlockStatement()
+
+	fn := &ast.FunctionLiteral{
+		Token:      nameTok,
+		Name:       nameTok.Literal,
+		Parameters: params,
+		Body:       body,
+		ReturnType: retType,
+	}
+	return &ast.ExpressionStatement{Token: nameTok, Expression: fn}
+}
+
+// parseTypedFunctionParameters 解析带类型的参数列表：int a, float b, c
+func (p *Parser) parseTypedFunctionParameters() []*ast.Identifier {
+	idents := []*ast.Identifier{}
+	if p.peekTokenIs(token.RPAREN) {
+		p.nextToken()
+		return idents
+	}
+	for {
+		p.nextToken()
+		// 可能是 "int a" 或只是 "a"
+		if p.curTokenIs(token.IDENT) && p.peekTokenIs(token.IDENT) && p.isTypeName(p.curToken.Literal) {
+			typeHint := p.curToken.Literal
+			p.nextToken() // 到参数名
+			idents = append(idents, &ast.Identifier{
+				Token:    p.curToken,
+				Value:    p.curToken.Literal,
+				TypeHint: typeHint,
+			})
+		} else if p.curTokenIs(token.IDENT) {
+			idents = append(idents, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+		} else {
+			p.errors = append(p.errors, fmt.Sprintf("line %d: expected parameter name, got %s", p.curToken.Line, p.curToken.Type))
+			return nil
+		}
+		if p.peekTokenIs(token.COMMA) {
+			p.nextToken()
+			continue
+		}
+		break
+	}
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+	return idents
 }
 
 func (p *Parser) parseLetStatement() *ast.LetStatement {
@@ -207,7 +287,8 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 const (
 	_           = iota
 	LOWEST      // 1
-	ASSIGN      // 2  =
+	STREAM      // 2  << >>（C++ 数据流，最低优先级）
+	ASSIGN      // 3  =
 	LOGICAL     // 3  && ||
 	EQUALS      // 4  == !=
 	LESSGREATER // 5  < > <= >=
@@ -219,6 +300,8 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
+	token.SHL:          STREAM,
+	token.SHR:          STREAM,
 	token.ASSIGN:       ASSIGN,
 	token.PLUS_ASSIGN:  ASSIGN,
 	token.MINUS_ASSIGN: ASSIGN,
@@ -711,8 +794,23 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	return exp
 }
 
-func (p *Parser) parseAssignExpression(left ast.Expression) ast.Expression {
-	exp := &ast.AssignExpression{Token: p.curToken, Left: left}
+// parseStreamExpression 解析 C++ 风格数据流：
+//   prints << x     输出
+//   inputs >> name  读入
+// 两者都按中缀表达式处理，求值时按左操作数决定方向。
+func (p *Parser) parseStreamExpression(left ast.Expression) ast.Expression {
+	exp := &ast.InfixExpression{
+		Token:    p.curToken,
+		Left:     left,
+		Operator: p.curToken.Literal,
+	}
+	prec := p.curPrecedence()
+	p.nextToken()
+	exp.Right = p.parseExpression(prec)
+	return exp
+}
+
+func (p *Parser) parseAssignExpression(left ast.Expression) ast.Expression {	exp := &ast.AssignExpression{Token: p.curToken, Left: left}
 	p.nextToken()
 	exp.Value = p.parseExpression(LOWEST)
 	return exp
@@ -992,6 +1090,8 @@ func (p *Parser) registerInfixFns() {
 		token.MINUS_ASSIGN: p.parseAssignExpression,
 		token.MUL_ASSIGN:   p.parseAssignExpression,
 		token.DIV_ASSIGN:   p.parseAssignExpression,
+		token.SHL:          p.parseStreamExpression,
+		token.SHR:          p.parseStreamExpression,
 		token.LPAREN:       p.parseCallExpression,
 		token.LBRACKET:     p.parseIndexExpression,
 		token.DOT:          p.parseDotExpression,

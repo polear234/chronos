@@ -29,7 +29,7 @@
     <UIRef Id="WixUI_Minimal" />
     <!-- 完成页上显示的文字：明确告知安装成功以及怎么用 -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
-              Value="Chronos 已安装完成。&#xD;&#xA;&#xD;&#xA;打开新的命令提示符，输入 chronos 即可使用（PATH 已自动配置）。" />
+              Value="Chronos 已安装完成。&#xD;&#xA;&#xD;&#xA;打开新的命令提示符，输入 chr 即可使用（PATH 已自动配置）。" />
     <Property Id="ARPNOMODIFY" Value="1" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.license)" />
 
@@ -37,9 +37,9 @@
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLDIR" Name="Chronos">
           <Component Id="ChronosExe" Guid="*" Win64="yes">
-            <!-- Name 必须固定为 chronos.exe：源文件叫 chronos-windows-amd64.exe，
-                 不指定的话装完就是那个名字，PATH 里敲 chronos 会找不到 -->
-            <File Id="ChronosExeFile" Source="$(var.source)" Name="chronos.exe" KeyPath="yes" />
+            <!-- Name 必须固定为 chr.exe：源文件叫 chr-windows-amd64.exe，
+                 不指定的话装完就是那个名字，PATH 里敲 chr 会找不到 -->
+            <File Id="ChronosExeFile" Source="$(var.source)" Name="chr.exe" KeyPath="yes" />
             <!-- 安装时把目录追加到系统 PATH，卸载时自动移除 -->
             <Environment Id="PathEnv"
                          Name="PATH"

@@ -242,6 +242,7 @@ type FunctionLiteral struct {
 	Parameters []*Identifier
 	Body       *BlockStatement
 	Name       string // 用于递归调用
+	ReturnType string // C++ 风格返回类型：int add(...) 里的 "int"
 }
 
 func (fl *FunctionLiteral) expressionNode()      {}
@@ -287,8 +288,9 @@ func (ce *CallExpression) String() string {
 
 // Identifier 标识符
 type Identifier struct {
-	Token token.Token
-	Value string
+	Token    token.Token
+	Value    string
+	TypeHint string // C++ 风格参数类型：fn add(int a, int b) 里的 "int"
 }
 
 func (i *Identifier) expressionNode()      {}

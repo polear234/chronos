@@ -7,7 +7,7 @@
 #   ./install.sh --force          跳过版本校验（安装旧二进制）
 #
 # 自动检测 CPU 架构（amd64/arm64），选择对应二进制安装并写入 PATH。
-# 安装前会执行 `chronos version` 校验版本号，避免装上空版本号的旧构建。
+# 安装前会执行 `chr version` 校验版本号，避免装上空版本号的旧构建。
 
 set -euo pipefail
 
@@ -42,8 +42,8 @@ Chronos 安装脚本
   ./install.sh --force         跳过二进制版本校验
 
 说明:
-  自动检测 CPU 架构（amd64 / arm64），安装 chronos 并写入 PATH。
-  安装前会运行 `chronos version` 校验版本号；若二进制是旧构建（版本号不匹配），
+  自动检测 CPU 架构（amd64 / arm64），安装 chr 并写入 PATH。
+  安装前会运行 `chr version` 校验版本号；若二进制是旧构建（版本号不匹配），
   脚本会拒绝安装并提示重新编译（make dist）或从 release 重新下载。
 EOF
             exit 0
@@ -52,7 +52,7 @@ EOF
 done
 
 # ---- 定位二进制目录：优先脚本同目录，其次 ../bin ----
-if ls "$SCRIPT_DIR"/chronos-linux-* >/dev/null 2>&1; then
+if ls "$SCRIPT_DIR"/chr-linux-* >/dev/null 2>&1; then
     BIN_DIR="$SCRIPT_DIR"
 else
     BIN_DIR="$SCRIPT_DIR/../bin"
@@ -61,8 +61,8 @@ fi
 # ---- 检测架构 ----
 ARCH="$(uname -m)"
 case "$ARCH" in
-    x86_64|amd64)   BINARY="chronos-linux-amd64" ;;
-    aarch64|arm64)  BINARY="chronos-linux-arm64" ;;
+    x86_64|amd64)   BINARY="chr-linux-amd64" ;;
+    aarch64|arm64)  BINARY="chr-linux-arm64" ;;
     *)
         echo "✗ 不支持的架构: $ARCH" >&2
         echo "  支持: x86_64 (amd64), aarch64 (arm64)" >&2
@@ -74,7 +74,7 @@ SRC="$BIN_DIR/$BINARY"
 if [ ! -f "$SRC" ]; then
     echo "✗ 找不到二进制: $SRC" >&2
     echo "  源码安装：在项目根目录执行 make dist" >&2
-    echo "  发布包：确保 install.sh 与 chronos-linux-* 在同一目录" >&2
+    echo "  发布包：确保 install.sh 与 chr-linux-* 在同一目录" >&2
     exit 1
 fi
 
@@ -107,12 +107,12 @@ echo "    目标: $INSTALL_BIN_DIR"
 mkdir -p "$INSTALL_BIN_DIR"
 
 if [ -w "$INSTALL_BIN_DIR" ]; then
-    cp "$SRC" "$INSTALL_BIN_DIR/chronos"
-    chmod +x "$INSTALL_BIN_DIR/chronos"
+    cp "$SRC" "$INSTALL_BIN_DIR/chr"
+    chmod +x "$INSTALL_BIN_DIR/chr"
 else
     echo "==> 需要权限，尝试 sudo..."
-    sudo cp "$SRC" "$INSTALL_BIN_DIR/chronos"
-    sudo chmod +x "$INSTALL_BIN_DIR/chronos"
+    sudo cp "$SRC" "$INSTALL_BIN_DIR/chr"
+    sudo chmod +x "$INSTALL_BIN_DIR/chr"
 fi
 
 # 用户级安装时写 PATH
@@ -128,13 +128,13 @@ if [ "$PREFIX" = "$HOME/.local" ]; then
     fi
 fi
 
-INSTALLED="$("$INSTALL_BIN_DIR/chronos" version 2>/dev/null | head -n1 || true)"
-if command -v chronos >/dev/null 2>&1; then
+INSTALLED="$("$INSTALL_BIN_DIR/chr" version 2>/dev/null | head -n1 || true)"
+if command -v chr >/dev/null 2>&1; then
     echo ""
-    echo "✓ 安装成功！位置: $(command -v chronos)"
+    echo "✓ 安装成功！位置: $(command -v chr)"
 else
     echo ""
-    echo "✓ 已安装到 $INSTALL_BIN_DIR/chronos"
+    echo "✓ 已安装到 $INSTALL_BIN_DIR/chr"
     echo "  ⚠ 请重新打开终端或执行: export PATH=\"$INSTALL_BIN_DIR:\$PATH\""
 fi
 
@@ -145,6 +145,6 @@ fi
 
 echo ""
 echo "快速开始:"
-echo "  chronos                   # 启动 REPL"
-echo "  chronos run hello.chr      # 运行脚本"
-echo "  chronos build app.chr      # 打包成单文件可执行"
+echo "  chr                       # 启动 REPL"
+echo "  chr run hello.chr      # 运行脚本"
+echo "  chr build app.chr      # 打包成单文件可执行"

@@ -158,7 +158,7 @@ func runEmbedded(script []byte) int {
 	return 0
 }
 
-// cmdBuild 实现 chronos build <file.chr> [-o out] [--plain]：
+// cmdBuild 实现 chr build <file.chr> [-o out] [--plain]：
 // 把脚本嵌入解释器副本，产出一个独立可执行文件（默认加密混淆）。
 func cmdBuild(args []string, stdout, stderr io.Writer) int {
 	var outPath, srcPath string
@@ -183,7 +183,7 @@ func cmdBuild(args []string, stdout, stderr io.Writer) int {
 		case a == "--encrypt" || a == "-e":
 			encrypt = true
 		case a == "-h" || a == "--help":
-			fmt.Fprintln(stdout, `用法: chronos build <file.chr> [-o 输出文件名] [--plain]
+			fmt.Fprintln(stdout, `用法: chr build <file.chr> [-o 输出文件名] [--plain]
 
   -o, --output <name>   指定输出文件名（默认取脚本名）
   --plain, -p           不做加密混淆，直接嵌入明文脚本（便于调试）
@@ -202,7 +202,7 @@ func cmdBuild(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if srcPath == "" {
-		fmt.Fprintln(stderr, "error: 缺少输入文件（用法: chronos build <file.chr> [-o 输出]）")
+		fmt.Fprintln(stderr, "error: 缺少输入文件（用法: chr build <file.chr> [-o 输出]）")
 		return 2
 	}
 

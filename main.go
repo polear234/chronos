@@ -21,7 +21,7 @@ import (
 var version = "0.3.2"
 
 func main() {
-	// 被 chronos build 编译过的程序：直接执行内嵌脚本
+	// 被 chr build 编译过的程序：直接执行内嵌脚本
 	if script, ok := selfPayload(); ok {
 		os.Exit(runEmbedded(script))
 	}
@@ -42,6 +42,21 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	case "build", "-build", "--build":
 		return cmdBuild(args[1:], stdout, stderr)
+
+	case "install", "-install", "--install":
+		return cmdInstall(args[1:], stdout, stderr)
+
+	case "uninstall", "-uninstall", "--uninstall":
+		return cmdUninstall(args[1:], stdout, stderr)
+
+	case "packages", "-packages", "--packages":
+		return cmdPackages(args[1:], stdout, stderr)
+
+	case "upgrade", "-upgrade", "--upgrade":
+		return cmdUpgrade(args[1:], stdout, stderr)
+
+	case "serve", "-serve", "--serve":
+		return cmdServe(args[1:], stdout, stderr)
 
 	case "repl", "-repl", "--repl":
 		repl.Start(stdin, stdout)
@@ -70,8 +85,8 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: chronos run [options] <file.chr>")
-		fmt.Fprintln(stderr, "       chronos -run <file.chr>")
+		fmt.Fprintln(stderr, "Usage: chr run [options] <file.chr>")
+		fmt.Fprintln(stderr, "       chr     -run <file.chr>")
 		fmt.Fprintln(stderr, "\nOptions:")
 		fs.PrintDefaults()
 	}
@@ -79,7 +94,7 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	files := fs.Args()
 	if len(files) == 0 {
-		fmt.Fprintln(stderr, "error: no input file (use 'chronos run file.chr', or '-' to read from stdin)")
+		fmt.Fprintln(stderr, "error: no input file (use 'chr run file.chr', or '-' to read from stdin)")
 		return 2
 	}
 
@@ -122,21 +137,26 @@ func printUsage(w io.Writer) {
 	fmt.Fprintf(w, `Chronos %s — a lightweight scripting language
 
 Usage:
-  chronos                     Start the interactive REPL
-  chronos run <file.chr>       Run a script file
-  chronos -run <file.chr>      Run a script file (shorthand)
-  chronos build <file.chr>     Compile a script into a standalone executable
-  chronos build <file.chr> -o <name>   Compile with a custom output name
-  chronos run -               Read and run source from stdin
-  chronos version             Print version
-  chronos help                Show this help
+  chr                              Start the interactive REPL
+  chr run <file.chr>               Run a script file
+  chr run -                        Read and run source from stdin
+  chr build <file.chr>             Compile into a standalone executable
+  chr build <file.chr> -o <name>   Compile with a custom output name
+  chr serve [dir] [-p port]        Serve a directory over HTTP
+  chr upgrade [--check]            Update to the latest release
+  chr install <pkg.chm | name>     Install a third-party package
+  chr uninstall <name>             Remove an installed package
+  chr packages                     List installed packages
+  chr version                      Print version
+  chr help                         Show this help
 
 Examples:
-  chronos
-  chronos run examples/hello.chr
-  chronos build examples/hello.chr        # 产出 ./hello 可执行文件
-  chronos build app.chr -o /usr/local/bin/app
-  echo 'print("hi")' | chronos run -
+  chr
+  chr run examples/hello.chr
+  chr build examples/hello.chr             # 产出 ./hello 可执行文件
+  chr build app.chr -o /usr/local/bin/app
+  chr serve ./public -p 8080               # 静态网站服务器
+  echo 'print("hi")' | chr run -
 `, version)
 }
 

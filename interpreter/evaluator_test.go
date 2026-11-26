@@ -1135,3 +1135,80 @@ func TestVirtualModuleFS(t *testing.T) {
 	input := "import \"lib\" as L\nL.add(3, 4)"
 	testIntegerObject(t, testEval(t, input), 7)
 }
+
+func TestCStyleFunction(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		// 基础：带类型参数
+		{`int add(int a, int b) { return a + b }
+add(3, 4)`, 7},
+		// 递归
+		{`int fact(int n) { if n <= 1 { return 1 } return n * fact(n - 1) }
+fact(5)`, 120},
+		// 无参数
+		{`int noparam() { return 42 }
+noparam()`, 42},
+		// 混合：一个带类型一个不带
+		{`int mixed(int a, b) { return a + b }
+mixed(1, 2)`, 3},
+		// 与旧 fn 语法共存
+		{`let old = fn(x) { return x * 2 }
+old(5)`, 10},
+		// 类型隐式转换：字符串 "42" 转 int
+		{`int conv(int a) { return a }
+conv("42")`, 42},
+	}
+	for _, tt := range tests {
+		testIntegerObject(t, testEval(t, tt.input), tt.expected)
+	}
+}
+
+func TestStreamOutput(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		// prints << 字面量，最后返回整数验证链路没坏
+		{`prints << "hi"
+1`, 1},
+		// prints << 表达式
+		{`prints << 2 + 3
+2`, 2},
+		// 变量
+		{`let x = 7
+prints << x
+3`, 3},
+	}
+	for _, tt := range tests {
+		testIntegerObject(t, testEval(t, tt.input), tt.expected)
+	}
+}
+
+func TestInferVarType(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{`let a = 1`, "int"},
+		{`let b = 1.5`, "float"},
+		{`let c = "s"`, "string"},
+		{`let d = true`, "bool"},
+	}
+	for _, tt := range tests {
+		env := object.NewEnvironment()
+		l := lexer.New(tt.input)
+		p := parser.New(l)
+		prog := p.ParseProgram()
+		if len(p.Errors()) > 0 {
+			t.Fatalf("parse %q: %v", tt.input, p.Errors())
+		}
+		Eval(prog, env)
+		// 取第一个 let 的变量名
+		name := string(tt.input[4])
+		if got := env.GetVarType(name); got != tt.want {
+			t.Errorf("%q: GetVarType(%s) = %q, want %q", tt.input, name, got, tt.want)
+		}
+	}
+}

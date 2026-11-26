@@ -29,6 +29,10 @@ const (
 	LTE    = "<="
 	GTE    = ">="
 
+	// C++ 风格数据流：cin >> x、cout << x
+	SHL = "<<"
+	SHR = ">>"
+
 	AND = "&&"
 	OR  = "||"
 	NOT = "!"

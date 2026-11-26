@@ -167,6 +167,13 @@ func (l *Lexer) NextToken() token.Token {
 			l.readChar()
 			return tok
 		}
+		// C++ 风格数据流：prints << x
+		if l.peekChar() == '<' {
+			l.readChar()
+			tok := makeTok(token.SHL, "<<")
+			l.readChar()
+			return tok
+		}
 		tok := makeTok(token.LT, string(l.ch))
 		l.readChar()
 		return tok
@@ -174,6 +181,13 @@ func (l *Lexer) NextToken() token.Token {
 		if l.peekChar() == '=' {
 			l.readChar()
 			tok := makeTok(token.GTE, ">=")
+			l.readChar()
+			return tok
+		}
+		// C++ 风格数据流：inputs >> x
+		if l.peekChar() == '>' {
+			l.readChar()
+			tok := makeTok(token.SHR, ">>")
 			l.readChar()
 			return tok
 		}
