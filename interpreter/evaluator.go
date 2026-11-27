@@ -415,6 +415,11 @@ func evalCallExpression(ce *ast.CallExpression, env *object.Environment) object.
 			return evalWithSnapshot(ce.Arguments, env)
 		case "Timeline":
 			return evalTimelineConstruct(ce.Arguments, env)
+		case "start":
+			// 并行执行多个函数，返回结果数组（仅在本机命令行版本真正并行）
+			if _, defined := env.Get(id.Value); !defined {
+				return evalStartCall(ce.Arguments, env)
+			}
 		case "map", "filter", "forEach", "reduce", "find":
 			// 数组高阶函数的「全局函数形态」：map(arr, fn)
 			// 仅当用户没有自定义同名函数时才生效，保证可覆盖

@@ -1212,3 +1212,46 @@ func TestInferVarType(t *testing.T) {
 		}
 	}
 }
+
+func TestStartParallel(t *testing.T) {
+	tests := []struct {
+		input string
+		want  []int64
+	}{
+		// 单函数
+		{`fn one() { return 42 }
+start(one)`, []int64{42}},
+		// 多函数按顺序返回
+		{`fn x() { return 1 }
+fn y() { return 2 }
+fn z() { return 3 }
+start(x, y, z)`, []int64{1, 2, 3}},
+		// 闭包传参
+		{`fn add(a, b) { return a + b }
+start(fn() { return add(3, 4) }, fn() { return add(10, 20) })`, []int64{7, 30}},
+	}
+	for _, tt := range tests {
+		result := testEval(t, tt.input)
+		arr, ok := result.(*object.Array)
+		if !ok {
+			t.Fatalf("%q: 期望数组，得到 %T (%s)", tt.input, result, result.Inspect())
+		}
+		if len(arr.Elements) != len(tt.want) {
+			t.Fatalf("%q: 长度 %d，期望 %d", tt.input, len(arr.Elements), len(tt.want))
+		}
+		for i, w := range tt.want {
+			testIntegerObject(t, arr.Elements[i], w)
+		}
+	}
+}
+
+func TestStartErrors(t *testing.T) {
+	// 没有参数
+	if result := testEval(t, `start()`); !isError(result) {
+		t.Error("start() 无参数应该报错")
+	}
+	// 参数不是函数
+	if result := testEval(t, `start(42)`); !isError(result) {
+		t.Error("start(42) 应该报错")
+	}
+}
