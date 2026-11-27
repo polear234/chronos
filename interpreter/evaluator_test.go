@@ -1229,6 +1229,17 @@ start(x, y, z)`, []int64{1, 2, 3}},
 		// 闭包传参
 		{`fn add(a, b) { return a + b }
 start(fn() { return add(3, 4) }, fn() { return add(10, 20) })`, []int64{7, 30}},
+		// 直接带参数的调用
+		{`fn add(a, b) { return a + b }
+fn mul(a, b) { return a * b }
+start(add(1, 2), mul(3, 4))`, []int64{3, 12}},
+		// 函数对象与带参调用混合
+		{`fn noparam() { return 99 }
+fn add(a, b) { return a + b }
+start(noparam, add(10, 20))`, []int64{99, 30}},
+		// 参数是表达式
+		{`fn calc(n) { return n * 2 }
+start(calc(3 + 4), calc(10 / 2))`, []int64{14, 10}},
 	}
 	for _, tt := range tests {
 		result := testEval(t, tt.input)
