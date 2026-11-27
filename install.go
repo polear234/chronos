@@ -129,28 +129,36 @@ func installFromFile(path string, stdout, stderr io.Writer) int {
 }
 
 func installFromGitHub(name string, stdout, stderr io.Writer) int {
-	// 从 chronos-packages 仓库拉取
-	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/chronos-packages/main/packages/%s/%s.chm",
-		repoOwner, name, name)
-
 	fmt.Fprintf(stdout, "正在从 GitHub 获取 %s…\n", name)
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: 下载失败: %v\n", err)
-		return 1
-	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
-		fmt.Fprintf(stderr, "error: 找不到包 %q\n", name)
-		fmt.Fprintf(stderr, "提示: 检查包名，或到 https://github.com/%s/chronos-packages 看看有哪些\n", repoOwner)
-		return 1
+	// 优先用 GitHub API 的内容接口（api.github.com 在国内通常可达，
+	// raw.githubusercontent.com 经常被重置）
+	body, status, err := fetchPackageViaAPI(client, name)
+	if body != nil {
+		defer body.Close()
 	}
-	if resp.StatusCode != 200 {
-		fmt.Fprintf(stderr, "error: HTTP %d\n", resp.StatusCode)
-		return 1
+	if err != nil || status != 200 {
+		// 回退到 raw 域名
+		rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/chronos-packages/main/packages/%s/%s.chm",
+			repoOwner, name, name)
+		resp, rerr := client.Get(rawURL)
+		if rerr != nil {
+			fmt.Fprintf(stderr, "error: 下载失败: %v\n", rerr)
+			return 1
+		}
+		if resp.StatusCode == 404 {
+			fmt.Fprintf(stderr, "error: 找不到包 %q\n", name)
+			fmt.Fprintf(stderr, "提示: 检查包名，或到 https://github.com/%s/chronos-packages 看看有哪些\n", repoOwner)
+			return 1
+		}
+		if resp.StatusCode != 200 {
+			fmt.Fprintf(stderr, "error: HTTP %d\n", resp.StatusCode)
+			return 1
+		}
+		body = resp.Body
+		defer body.Close()
 	}
 
 	tmp, err := os.CreateTemp("", "chm-download-*.chm")
@@ -161,7 +169,7 @@ func installFromGitHub(name string, stdout, stderr io.Writer) int {
 	tmpPath := tmp.Name()
 	defer os.Remove(tmpPath)
 
-	if _, err := io.Copy(tmp, resp.Body); err != nil {
+	if _, err := io.Copy(tmp, body); err != nil {
 		tmp.Close()
 		fmt.Fprintf(stderr, "error: 下载中断: %v\n", err)
 		return 1
@@ -169,6 +177,24 @@ func installFromGitHub(name string, stdout, stderr io.Writer) int {
 	tmp.Close()
 
 	return installFromFile(tmpPath, stdout, stderr)
+}
+
+// fetchPackageViaAPI 用 GitHub Contents API 拿包内容（走 api.github.com）
+func fetchPackageViaAPI(client *http.Client, name string) (io.ReadCloser, int, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/chronos-packages/contents/packages/%s/%s.chm",
+		repoOwner, name, name)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Accept", "application/vnd.github.raw")
+	req.Header.Set("User-Agent", "chr-installer")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	return resp.Body, resp.StatusCode, nil
 }
 
 // cmdUninstall 卸载第三方包

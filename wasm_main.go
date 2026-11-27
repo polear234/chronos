@@ -16,7 +16,7 @@ import (
 	"chronos/parser"
 )
 
-var version = "0.3.2"
+var version = "0.4.0"
 
 type runResult struct {
 	Output string `json:"output"`

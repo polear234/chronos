@@ -18,7 +18,7 @@ import (
 )
 
 // version 由 ldflags 在编译期注入（-X main.version=...），必须是 var 不能是 const
-var version = "0.3.2"
+var version = "0.4.0"
 
 func main() {
 	// 被 chr build 编译过的程序：直接执行内嵌脚本

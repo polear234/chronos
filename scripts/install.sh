@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-VERSION="0.3.2"
+VERSION="0.4.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PREFIX="/usr/local"
