@@ -124,7 +124,7 @@ func fetchLatestRelease() (*ghRelease, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "chr-upgrader")
+	req.Header.Set("User-Agent", "chpp-upgrader")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -149,9 +149,9 @@ func fetchLatestRelease() (*ghRelease, error) {
 	return &rel, nil
 }
 
-// assetNameFor 按平台拼出发布产物名，例如 chr-linux-amd64
+// assetNameFor 按平台拼出发布产物名，例如 chpp-linux-amd64
 func assetNameFor(goos, goarch string) string {
-	name := fmt.Sprintf("chr-%s-%s", goos, goarch)
+	name := fmt.Sprintf("chpp-%s-%s", goos, goarch)
 	if goos == "windows" {
 		name += ".exe"
 	}
@@ -202,7 +202,7 @@ func downloadToTemp(url string) (string, error) {
 		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
-	f, err := os.CreateTemp("", "chr-upgrade-*")
+	f, err := os.CreateTemp("", "chpp-upgrade-*")
 	if err != nil {
 		return "", err
 	}

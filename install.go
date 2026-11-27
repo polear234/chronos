@@ -188,7 +188,7 @@ func fetchPackageViaAPI(client *http.Client, name string) (io.ReadCloser, int, e
 		return nil, 0, err
 	}
 	req.Header.Set("Accept", "application/vnd.github.raw")
-	req.Header.Set("User-Agent", "chr-installer")
+	req.Header.Set("User-Agent", "chpp-installer")
 
 	resp, err := client.Do(req)
 	if err != nil {

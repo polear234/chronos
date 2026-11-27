@@ -40,9 +40,9 @@ switch ($Arch) {
 # ---- 确定安装目录 ----
 if ($InstallDir -eq "") {
     if ($Scope -eq "Machine") {
-        $InstallDir = Join-Path $env:ProgramFiles "chr"
+        $InstallDir = Join-Path $env:ProgramFiles "chpp"
     } else {
-        $InstallDir = Join-Path $env:LOCALAPPDATA "chr"
+        $InstallDir = Join-Path $env:LOCALAPPDATA "chpp"
     }
 }
 
@@ -134,7 +134,7 @@ if (Get-Command chpp -ErrorAction SilentlyContinue) {
     & $Dest version
 } else {
     Write-Host "✓ 已安装到 $Dest" -ForegroundColor Green
-    Write-Host "  ⚠ 当前窗口可能未刷新 PATH，请重新打开终端后使用 chr" -ForegroundColor Yellow
+    Write-Host "  ⚠ 当前窗口可能未刷新 PATH，请重新打开终端后使用 chpp" -ForegroundColor Yellow
 }
 
 Write-Host ""

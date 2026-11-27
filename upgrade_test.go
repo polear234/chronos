@@ -26,10 +26,10 @@ func TestAssetNameFor(t *testing.T) {
 	tests := []struct {
 		goos, goarch, want string
 	}{
-		{"linux", "amd64", "chr-linux-amd64"},
-		{"linux", "arm64", "chr-linux-arm64"},
-		{"windows", "amd64", "chr-windows-amd64.exe"},
-		{"darwin", "arm64", "chr-darwin-arm64"},
+		{"linux", "amd64", "chpp-linux-amd64"},
+		{"linux", "arm64", "chpp-linux-arm64"},
+		{"windows", "amd64", "chpp-windows-amd64.exe"},
+		{"darwin", "arm64", "chpp-darwin-arm64"},
 	}
 	for _, tt := range tests {
 		if got := assetNameFor(tt.goos, tt.goarch); got != tt.want {

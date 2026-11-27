@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronospp/release.yml?branch=main)](https://github.com/polear234/chronospp/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronospp)](https://goreportcard.com/report/github.com/polear234/chronospp)
-[![Version](https://img.shields.io/badge/version-0.3.2-3ddcae.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-3ddcae.svg)]()
 [![Go Version](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/platform-android%20%7C%20linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
 
@@ -125,8 +125,8 @@ let evens = [1,2,3,4,5]
 
 | 方式 | 文件 | 说明 |
 |------|------|------|
-| **MSI 安装包** | `chr-0.3.2-windows-amd64.msi` | 双击安装到 `Program Files\Chr` |
-| **便携版 ZIP** | `chr-0.3.2-windows-amd64.zip` | 解压即用，无需安装 |
+| **MSI 安装包** | `chpp-1.0.0-windows-amd64.msi` | 双击安装到 `Program Files\Chronospp` |
+| **便携版 ZIP** | `chpp-1.0.0-windows-amd64.zip` | 解压即用，无需安装 |
 | **PowerShell** | `install.ps1` | `.\install.ps1` 用户级安装 |
 
 > ARM64 Windows（如 Surface Pro X）把文件名里的 `amd64` 换成 `arm64`。
@@ -135,8 +135,8 @@ let evens = [1,2,3,4,5]
 
 ```bash
 # deb 包（Ubuntu / Debian）
-sudo dpkg -i chr_0.3.2_amd64.deb     # x86_64
-sudo dpkg -i chr_0.3.2_arm64.deb     # arm64（树莓派 / 手机）
+sudo dpkg -i chpp_1.0.0_amd64.deb     # x86_64
+sudo dpkg -i chpp_1.0.0_arm64.deb     # arm64（树莓派 / 手机）
 
 # 或安装脚本
 sudo ./install.sh          # 系统级 → /usr/local/bin
@@ -147,15 +147,15 @@ sudo ./install.sh          # 系统级 → /usr/local/bin
 
 ```bash
 # Apple Silicon
-chmod +x chr-darwin-arm64 && sudo mv chr-darwin-arm64 /usr/local/bin/chpp
+chmod +x chpp-darwin-arm64 && sudo mv chpp-darwin-arm64 /usr/local/bin/chpp
 
 # Intel
-chmod +x chr-darwin-amd64 && sudo mv chr-darwin-amd64 /usr/local/bin/chpp
+chmod +x chpp-darwin-amd64 && sudo mv chpp-darwin-amd64 /usr/local/bin/chpp
 ```
 
 ### Android
 
-安装 `chronos-ide-0.3.2.apk` —— 内置编辑器和编译器，可离线运行、打包 APK / SH。
+安装 `chronospp-ide-1.0.0.apk` —— 内置编辑器和编译器，可离线运行、打包 APK / SH。
 
 ### 源码编译
 
