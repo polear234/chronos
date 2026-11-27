@@ -10,13 +10,13 @@ import (
 	"strings"
 	"syscall/js"
 
-	"chronos/interpreter"
-	"chronos/lexer"
-	"chronos/object"
-	"chronos/parser"
+	"chronospp/interpreter"
+	"chronospp/lexer"
+	"chronospp/object"
+	"chronospp/parser"
 )
 
-var version = "0.4.0"
+var version = "1.0.0"
 
 type runResult struct {
 	Output string `json:"output"`
@@ -35,7 +35,7 @@ func main() {
 
 	js.Global().Set("chronosRun", js.FuncOf(runJS))
 	js.Global().Set("chronosCheck", js.FuncOf(checkJS))
-	// 虚拟文件系统：JS 侧维护 { "lib.chr": "源码..." }，import 时从这里取
+	// 虚拟文件系统：JS 侧维护 { "lib.chpp": "源码..." }，import 时从这里取
 	interpreter.SetModuleReader(func(path string) ([]byte, error) {
 		files := js.Global().Get("chronosFiles")
 		if files.Type() != js.TypeObject {
@@ -44,11 +44,8 @@ func main() {
 		// 依次尝试完整路径、文件名、带/不带扩展名
 		cands := []string{path, filepath.Base(path)}
 		base := filepath.Base(path)
-		cands = append(cands,
-			strings.TrimSuffix(base, filepath.Ext(base)),
-			strings.TrimSuffix(base, filepath.Ext(base))+".chr",
-			base+".chr",
-		)
+		stem := strings.TrimSuffix(base, filepath.Ext(base))
+		cands = append(cands, stem, stem+".chpp", base+".chpp", stem+".chpp", base+".chpp")
 		for _, c := range cands {
 			v := files.Get(c)
 			if v.Type() == js.TypeString {
@@ -70,15 +67,19 @@ func main() {
 			return true
 		}
 		stem := strings.TrimSuffix(base, filepath.Ext(base))
-		return files.Get(stem).Type() == js.TypeString ||
-			files.Get(stem+".chr").Type() == js.TypeString
+		for _, n := range []string{stem, stem + ".chpp", stem + ".chpp"} {
+			if files.Get(n).Type() == js.TypeString {
+				return true
+			}
+		}
+		return false
 	})
 	js.Global().Set("chronosVersion", js.FuncOf(func(this js.Value, args []js.Value) any {
-		return "Chronos " + version
+		return "Chronospp " + version
 	}))
 	// 通知宿主已就绪（若宿主注册了 onChronosReady）
 	if cb := js.Global().Get("onChronosReady"); cb.Type() == js.TypeFunction {
-		cb.Invoke("Chronos " + version)
+		cb.Invoke("Chronospp " + version)
 	}
 	// 阻塞，保持 Go 运行时存活以便持续接收 JS 调用
 	select {}

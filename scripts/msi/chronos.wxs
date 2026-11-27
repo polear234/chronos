@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Chronos Windows 安装包定义（wixl 兼容子集）
+  Chronospp Windows 安装包定义（wixl 兼容子集）
   用法（Windows / WiX v3）:
     candle.exe -dSource=chronos.exe -dVersion=0.2.1 chronos.wxs
     light.exe -out chronos.msi chronos.wixobj
@@ -10,10 +10,10 @@
   <?define arch = "amd64" ?>
   <?endif?>
   <Product Id="*"
-           Name="Chronos"
+           Name="Chronospp"
            Language="1033"
            Version="$(var.version)"
-           Manufacturer="Chronos Contributors"
+           Manufacturer="Chronospp Contributors"
            UpgradeCode="8F3A6C2E-4B1D-4E7A-9C5F-2D8B7A1E6F03">
 
     <?if $(var.arch) = "arm64" ?>
@@ -21,7 +21,7 @@
     <?else?>
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="x64" />
     <?endif?>
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Chronos is already installed." />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Chronospp is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
     <!-- 安装向导 UI：欢迎页 → 许可证 → 安装进度 → 完成页
@@ -29,17 +29,17 @@
     <UIRef Id="WixUI_Minimal" />
     <!-- 完成页上显示的文字：明确告知安装成功以及怎么用 -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
-              Value="Chronos 已安装完成。&#xD;&#xA;&#xD;&#xA;打开新的命令提示符，输入 chr 即可使用（PATH 已自动配置）。" />
+              Value="Chronospp 已安装完成。&#xD;&#xA;&#xD;&#xA;打开新的命令提示符，输入 chpp 即可使用（PATH 已自动配置）。" />
     <Property Id="ARPNOMODIFY" Value="1" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.license)" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLDIR" Name="Chronos">
+        <Directory Id="INSTALLDIR" Name="Chronospp">
           <Component Id="ChronosExe" Guid="*" Win64="yes">
-            <!-- Name 必须固定为 chr.exe：源文件叫 chr-windows-amd64.exe，
-                 不指定的话装完就是那个名字，PATH 里敲 chr 会找不到 -->
-            <File Id="ChronosExeFile" Source="$(var.source)" Name="chr.exe" KeyPath="yes" />
+            <!-- Name 必须固定为 chpp.exe：源文件叫 chpp-windows-amd64.exe，
+                 不指定的话装完就是那个名字，PATH 里敲 chpp 会找不到 -->
+            <File Id="ChronosExeFile" Source="$(var.source)" Name="chpp.exe" KeyPath="yes" />
             <!-- 安装时把目录追加到系统 PATH，卸载时自动移除 -->
             <Environment Id="PathEnv"
                          Name="PATH"
@@ -53,7 +53,7 @@
       </Directory>
     </Directory>
 
-    <Feature Id="MainFeature" Title="Chronos" Level="1">
+    <Feature Id="MainFeature" Title="Chronospp" Level="1">
       <ComponentRef Id="ChronosExe" />
     </Feature>
   </Product>

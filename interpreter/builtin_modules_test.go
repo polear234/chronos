@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"chronos/object"
+	"chronospp/object"
 )
 
 func TestBuiltinModulesRegistered(t *testing.T) {

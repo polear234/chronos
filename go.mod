@@ -1,3 +1,3 @@
-module chronos
+module chronospp
 
 go 1.21

@@ -104,7 +104,7 @@ jobs:
             $VERSION = ((Select-String -Path Makefile -Pattern '^VERSION\s*:=').Line -split ':=')[1].Trim()
           }
           $wix = "${{ steps.wix.outputs.bin }}"
-          $src = "$PWD\dist\chr-windows-${{ matrix.arch }}.exe"
+          $src = "$PWD\dist\chpp-windows-${{ matrix.arch }}.exe"
           New-Item -ItemType Directory -Force -Path obj | Out-Null
           # WiX v3 的 -d 变量名区分大小写，需与 .wxs 中的 $(var.source)/$(var.version) 一致
           $lic = "$PWD\scripts\msi\LICENSE.rtf"
@@ -128,7 +128,7 @@ jobs:
           }
           $tmp = "portable"
           New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-          Copy-Item "dist/chr-windows-${{ matrix.arch }}.exe" "$tmp/chr.exe"
+          Copy-Item "dist/chpp-windows-${{ matrix.arch }}.exe" "$tmp/chpp.exe"
           Copy-Item README.md, LICENSE "$tmp/"
           if (Test-Path examples) { Copy-Item examples "$tmp/examples" -Recurse }
           Compress-Archive -Path "$tmp/*" `
@@ -167,17 +167,17 @@ jobs:
           ARCH="${{ matrix.arch }}"
           PKG="$(mktemp -d)"
           mkdir -p "$PKG/DEBIAN" "$PKG/usr/local/bin"
-          cp "dist/chr-linux-$ARCH" "$PKG/usr/local/bin/chr"
-          chmod 755 "$PKG/usr/local/bin/chr"
+          cp "dist/chpp-linux-$ARCH" "$PKG/usr/local/bin/chpp"
+          chmod 755 "$PKG/usr/local/bin/chpp"
           cat > "$PKG/DEBIAN/control" <<EOF
-          Package: chr
+          Package: chpp
           Version: $VERSION
           Section: devel
           Priority: optional
           Architecture: $ARCH
-          Maintainer: Chronos Contributors <chronos@example.com>
+          Maintainer: Chronospp Contributors <chronos@example.com>
           Depends: libc6
-          Description: Chronos - a lightweight scripting language
+          Description: Chronospp - a lightweight scripting language
            Lightweight dynamically-typed scripting language implemented in Go.
            Features variable time-travel (rollback), transactional snapshots,
            pipe operator, classes with inheritance, and a module system.
@@ -221,7 +221,7 @@ jobs:
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
             -ldflags "-s -w -X main.version=${{ steps.ver.outputs.version }}" \
-            -o android/app/src/main/assets/chr-linux-arm64 .
+            -o android/app/src/main/assets/chpp-linux-arm64 .
 
       - name: Use JDK 17
         uses: actions/setup-java@v4
@@ -322,7 +322,7 @@ jobs:
       - name: Notes
         run: |
           {
-            printf 'Chronos %s\n\n' "$GITHUB_REF_NAME"
+            printf 'Chronospp %s\n\n' "$GITHUB_REF_NAME"
             printf '用 Go 手写的轻量脚本语言：变量时间旅行 `rollback()`、`withSnapshot`、管道 `|>`、类继承、模式匹配、import 模块。\n\n'
             printf '### 下载\n\n'
             printf '| 平台 | 文件 |\n|---|---|\n'
@@ -334,9 +334,9 @@ jobs:
             printf '\n### 快速开始\n\n'
             printf '**Windows**：下载 `.msi` 双击安装（自动加入 PATH），或 `.zip` 解压即用。\n\n'
             printf '```bash\n'
-            printf 'chmod +x chr-linux-arm64\n'
-            printf './chr-linux-arm64 run examples/hello.chr\n'
-            printf './chr-linux-arm64          # 进入 REPL\n'
+            printf 'chmod +x chpp-linux-arm64\n'
+            printf './chpp-linux-arm64 run examples/hello.chpp\n'
+            printf './chpp-linux-arm64          # 进入 REPL\n'
             printf '```\n\n'
             printf '单文件静态二进制，无运行时依赖。校验和见 `SHA256SUMS.txt`。\n'
           } > NOTES.md
@@ -352,6 +352,6 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" dist/* \
               --repo "$GITHUB_REPOSITORY" \
-              --title "Chronos $GITHUB_REF_NAME" \
+              --title "Chronospp $GITHUB_REF_NAME" \
               --notes-file NOTES.md
           fi

@@ -45,10 +45,10 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Chronos IDE —— WebView + Go WASM 运行时。
+ * Chronospp IDE —— WebView + Go WASM 运行时。
  *
  * JS 桥（ChronosBridge）：
- *   pickFile()                    导入脚本（.chr / 旧版 .px）
+ *   pickFile()                    导入脚本（.chpp / 旧版 .px）
  *   saveFile(name, text)          导出源码
  *   compileApk(name, script)      把脚本打包成独立 APK（模板 + 重签名）
  */
@@ -97,14 +97,14 @@ public class MainActivity extends Activity {
         tv.setTextSize(12);
         tv.setPadding(36, 96, 36, 36);
         tv.setTextIsSelectable(true);
-        tv.setText("Chronos 启动中…\n\nAndroid " + Build.VERSION.RELEASE
+        tv.setText("Chronospp 启动中…\n\nAndroid " + Build.VERSION.RELEASE
                 + " (API " + Build.VERSION.SDK_INT + ")");
         setContentView(tv);
 
         try {
             boot();
         } catch (Throwable e) {
-            Log.e("Chronos", "启动失败", e);
+            Log.e("Chronospp", "启动失败", e);
             tv.setText("启动失败:\n\n" + Log.getStackTraceString(e));
             tv.setTextColor(0xFFFF7B72);
             setContentView(tv);
@@ -148,7 +148,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        // JS prompt() → 原生输入框（供 Chronos 的 input() 使用）
+        // JS prompt() → 原生输入框（供 Chronospp 的 input() 使用）
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onJsPrompt(WebView view, String url, String message,
@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
                 et.setText(defaultValue == null ? "" : defaultValue);
                 et.setSelection(et.getText().length());
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Chronos 输入")
+                        .setTitle("Chronospp 输入")
                         .setMessage(message == null ? "" : message)
                         .setView(et)
                         .setPositiveButton("确定", new DialogInterface.OnClickListener() {
@@ -258,25 +258,25 @@ public class MainActivity extends Activity {
             new Thread(new Runnable() {
                 @Override public void run() {
                     try {
-                        InputStream in = getAssets().open("chr-linux-arm64");
+                        InputStream in = getAssets().open("chpp-linux-arm64");
                         byte[] bin = readAllBytes(in);
                         in.close();
                         String b64 = Base64.encodeToString(bin, Base64.NO_WRAP);
 
                         StringBuilder sb = new StringBuilder(b64.length() + script.length() + 512);
                         sb.append("#!/bin/sh\n");
-                        sb.append("# 由 Chronos IDE 生成：自包含可执行脚本\n");
+                        sb.append("# 由 Chronospp IDE 生成：自包含可执行脚本\n");
                         sb.append("set -e\n");
                         sb.append("WORK=\"$(mktemp -d \"${TMPDIR:-/tmp}/chronos.XXXXXX\")\"\n");
                         sb.append("trap 'rm -rf \"$WORK\"' EXIT INT TERM\n");
-                        sb.append("base64 -d > \"$WORK/chr\" <<'__CHRONOS_BIN__'\n");
+                        sb.append("base64 -d > \"$WORK/chpp\" <<'__CHRONOS_BIN__'\n");
                         sb.append(b64).append("\n");
                         sb.append("__CHRONOS_BIN__\n");
-                        sb.append("chmod +x \"$WORK/chr\"\n");
-                        sb.append("cat > \"$WORK/app.chr\" <<'__CHRONOS_SRC__'\n");
+                        sb.append("chmod +x \"$WORK/chpp\"\n");
+                        sb.append("cat > \"$WORK/app.chpp\" <<'__CHRONOS_SRC__'\n");
                         sb.append(script).append("\n");
                         sb.append("__CHRONOS_SRC__\n");
-                        sb.append("\"$WORK/chr\" -run \"$WORK/app.chr\"\n");
+                        sb.append("\"$WORK/chpp\" -run \"$WORK/app.chpp\"\n");
 
                         File out = new File(getCacheDir(), "app.sh");
                         FileOutputStream fos = new FileOutputStream(out);
@@ -308,7 +308,7 @@ public class MainActivity extends Activity {
     // ---------------- APK 打包 ----------------
 
     /**
-     * 复制模板 APK，替换 assets/script.chr（兼容旧版 script.px），并剔除旧的签名文件。
+     * 复制模板 APK，替换 assets/script.chpp（兼容旧版 script.px），并剔除旧的签名文件。
      *
      * 关键：Android 11+ 要求 targetSdk>=30 的 APK 中 resources.arsc
      * 必须是 STORED（不压缩）且 4 字节对齐。做法是把它作为第一个条目、
@@ -344,7 +344,7 @@ public class MainActivity extends Activity {
                 entries.put(name, data);
             }
         }
-        entries.put("assets/script.chr", script.getBytes(StandardCharsets.UTF_8));
+        entries.put("assets/script.chpp", script.getBytes(StandardCharsets.UTF_8));
 
         // 2) 写出：resources.arsc 优先且 STORED
         try (ZipOutputStream zout = new ZipOutputStream(
@@ -433,7 +433,7 @@ public class MainActivity extends Activity {
             return "chronos-app.apk";
         }
         String n = base.trim();
-        if (n.endsWith(".chr")) {
+        if (n.endsWith(".chpp")) {
             n = n.substring(0, n.length() - 4);
         } else if (n.endsWith(".px")) {
             n = n.substring(0, n.length() - 3);
@@ -475,7 +475,7 @@ public class MainActivity extends Activity {
     private static String shellName(String base) {
         if (base == null || base.trim().isEmpty()) return "app.sh";
         String n = base.trim();
-        if (n.endsWith(".chr")) n = n.substring(0, n.length() - 4);
+        if (n.endsWith(".chpp")) n = n.substring(0, n.length() - 4);
         else if (n.endsWith(".px")) n = n.substring(0, n.length() - 3);
         if (!n.endsWith(".sh")) n = n + ".sh";
         return n;
@@ -611,7 +611,7 @@ public class MainActivity extends Activity {
         if (name == null) {
             name = uri.getLastPathSegment();
         }
-        return name == null ? "untitled.chr" : name;
+        return name == null ? "untitled.chpp" : name;
     }
 
     private void postJs(String fn, boolean ok, String msg) {

@@ -3,8 +3,8 @@
 package interpreter
 
 import (
-	"chronos/ast"
-	"chronos/object"
+	"chronospp/ast"
+	"chronospp/object"
 )
 
 // TODO(并发): WASM 是单线程环境，start() 在这里退化为顺序执行，

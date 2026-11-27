@@ -3,8 +3,8 @@ package parser
 import (
 	"testing"
 
-	"chronos/ast"
-	"chronos/lexer"
+	"chronospp/ast"
+	"chronospp/lexer"
 )
 
 func TestLetStatements(t *testing.T) {

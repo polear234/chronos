@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// cmdServe 实现 chr serve [目录] [-p 端口] [-open]
+// cmdServe 实现 chpp serve [目录] [-p 端口] [-open]
 // 内置静态网站服务器，类似 python -m http.server
 func cmdServe(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
@@ -24,12 +24,12 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 	listen := fs.Bool("l", false, "只监听 127.0.0.1")
 	noIndex := fs.Bool("no-index", false, "不生成目录列表")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "用法: chr serve [目录] [选项]")
+		fmt.Fprintln(stderr, "用法: chpp serve [目录] [选项]")
 		fmt.Fprintln(stderr, "\n选项:")
 		fs.PrintDefaults()
 	}
 	// Go 的 flag 遇到第一个非选项参数就停止解析，
-	// 而用户习惯写成 `chr serve ./site -p 8080`（目录在前）。
+	// 而用户习惯写成 `chpp serve ./site -p 8080`（目录在前）。
 	// 这里把非选项参数挪到末尾，让 -p 之类也能生效。
 	var opts, positional []string
 	for i := 0; i < len(args); i++ {
@@ -94,7 +94,7 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 	if hostPart == "" || hostPart == "0.0.0.0" || hostPart == "::" {
 		hostPart = "localhost"
 	}
-	fmt.Fprintf(stdout, "Chronos 静态服务器已启动\n")
+	fmt.Fprintf(stdout, "Chronospp 静态服务器已启动\n")
 	fmt.Fprintf(stdout, "  目录: %s\n", abs)
 	fmt.Fprintf(stdout, "  地址: http://%s:%s/\n", hostPart, portPart)
 	if hostPart == "localhost" {

@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"chronos/ast"
-	"chronos/lexer"
-	"chronos/object"
-	"chronos/parser"
-	"chronos/token"
+	"chronospp/ast"
+	"chronospp/lexer"
+	"chronospp/object"
+	"chronospp/parser"
+	"chronospp/token"
 )
 
 var (
@@ -1584,14 +1584,14 @@ func evalImportStatement(is *ast.ImportStatement, env *object.Environment) objec
 }
 
 // resolveModulePath 把 import 路径解析成实际文件路径
-// 优先 .chr（新后缀），兼容旧版 .px。
+// 优先 .chpp（新后缀），兼容旧版 .px。
 func resolveModulePath(modPath, baseDir string) string {
 	// 已是绝对路径
 	if filepath.IsAbs(modPath) {
 		if moduleFileExists(modPath) {
 			return modPath
 		}
-		for _, ext := range []string{".chr", ".px"} {
+		for _, ext := range []string{".chpp", ".chpp", ".px"} {
 			if moduleFileExists(modPath + ext) {
 				return modPath + ext
 			}
@@ -1605,7 +1605,7 @@ func resolveModulePath(modPath, baseDir string) string {
 		dir = "."
 	}
 	candidates := []string{filepath.Join(dir, modPath)}
-	for _, ext := range []string{".chr", ".px"} {
+	for _, ext := range []string{".chpp", ".chpp", ".px"} {
 		candidates = append(candidates,
 			filepath.Join(dir, modPath+ext),
 			filepath.Join(dir, modPath, "index"+ext),
@@ -1624,7 +1624,7 @@ func resolveModulePath(modPath, baseDir string) string {
 		if moduleFileExists(pkgDir) {
 			return pkgDir
 		}
-		for _, ext := range []string{".chr", ".px"} {
+		for _, ext := range []string{".chpp", ".chpp", ".px"} {
 			if moduleFileExists(pkgDir + ext) {
 				return pkgDir + ext
 			}

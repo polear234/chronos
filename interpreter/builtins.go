@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"chronos/object"
+	"chronospp/object"
 )
 
 // builtins 全局内置函数

@@ -1,6 +1,6 @@
 # 模块开发指南
 
-Chronos 的模块就是一个 `.chr` 文件（或一个目录），用 `import` 引入。本文档讲怎么写出可复用的模块，以及怎么打包成 `.chm` 发布给别人用。
+Chronospp 的模块就是一个 `.chpp` 文件（或一个目录），用 `import` 引入。本文档讲怎么写出可复用的模块，以及怎么打包成 `.chm` 发布给别人用。
 
 ---
 
@@ -18,7 +18,7 @@ Chronos 的模块就是一个 `.chr` 文件（或一个目录），用 `import` 
 
 ## 最简单的模块
 
-新建 `greet.chr`：
+新建 `greet.chpp`：
 
 ```chronos
 fn hello(name) {
@@ -31,7 +31,7 @@ fn hello(name) {
 ```chronos
 import "greet"
 
-print(greet.hello("Chronos"))
+print(greet.hello("Chronospp"))
 ```
 
 `import` 后面写**相对路径**（不带扩展名也可以）：
@@ -49,7 +49,7 @@ import "lib/greet"        // 子目录
 模块里的 `let`、`fn` 默认都能被访问。想显式声明导出，用 `export`：
 
 ```chronos
-// mathx.chr
+// mathx.chpp
 let PI = 3.14159
 
 fn square(x) {
@@ -85,16 +85,16 @@ print(mx.cube(3))         // 27
 
 ## 模块目录与入口
 
-模块也可以是个**目录**，入口文件叫 `index.chr`：
+模块也可以是个**目录**，入口文件叫 `index.chpp`：
 
 ```
 mylib/
-├── index.chr
-├── helpers.chr
-└── config.chr
+├── index.chpp
+├── helpers.chpp
+└── config.chpp
 ```
 
-`index.chr`：
+`index.chpp`：
 
 ```chronos
 import "./helpers"
@@ -185,21 +185,21 @@ math.inf              // +Inf
 2. **已安装的第三方包**（`~/.chronos/packages/`）
 3. **内置模块**（`os`、`math`）
 
-所以你自己写一个 `math.chr` 放在同目录，会覆盖内置的 `math`。
+所以你自己写一个 `math.chpp` 放在同目录，会覆盖内置的 `math`。
 
 ---
 
 ## 打包成 .chm
 
-`.chm` 是 Chronos 的第三方包格式，本质是 **tar.gz**，里面必须有 `manifest.json`。
+`.chm` 是 Chronospp 的第三方包格式，本质是 **tar.gz**，里面必须有 `manifest.json`。
 
 ### 1. 准备目录
 
 ```
 mypkg/
 ├── manifest.json
-├── index.chr
-└── extra.chr
+├── index.chpp
+└── extra.chpp
 ```
 
 ### 2. 写 manifest.json
@@ -210,17 +210,17 @@ mypkg/
   "version": "1.0.0",
   "description": "一句话说明这个包做什么",
   "author": "你的名字",
-  "main": "index.chr"
+  "main": "index.chpp"
 }
 ```
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `name` | ✅ | 包名，`import "包名"` 就用它 |
-| `version` | 建议 | 版本号，`chr packages` 会显示 |
+| `version` | 建议 | 版本号，`chpp packages` 会显示 |
 | `description` | 建议 | 一句话描述 |
 | `author` | 可选 | 作者 |
-| `main` | 可选 | 入口文件，默认 `index.chr` |
+| `main` | 可选 | 入口文件，默认 `index.chpp` |
 
 ### 3. 打包
 
@@ -236,15 +236,15 @@ tar czf mypkg.chm -C mypkg .
 tar tzf mypkg.chm
 # ./
 # ./manifest.json
-# ./index.chr
-# ./extra.chr
+# ./index.chpp
+# ./extra.chpp
 ```
 
 ### 4. 安装测试
 
 ```bash
-chr install mypkg.chm
-chr packages
+chpp install mypkg.chm
+chpp packages
 ```
 
 然后写个脚本试：
@@ -257,14 +257,14 @@ print(mypkg.something())
 ### 5. 卸载
 
 ```bash
-chr uninstall mypkg
+chpp uninstall mypkg
 ```
 
 ---
 
 ## 发布到 GitHub
 
-Chronos 会自动从 `polear234/chronos-packages` 仓库拉包。目录结构：
+Chronospp 会自动从 `polear234/chronos-packages` 仓库拉包。目录结构：
 
 ```
 chronos-packages/
@@ -278,7 +278,7 @@ chronos-packages/
 发布后别人就能直接：
 
 ```bash
-chr install mypkg
+chpp install mypkg
 ```
 
 ---
@@ -293,24 +293,24 @@ ERROR: cannot resolve import path: mymod
 
 按顺序检查：
 
-1. 文件真的存在吗？`ls mymod.chr`
+1. 文件真的存在吗？`ls mymod.chpp`
 2. 路径写对了吗？`import "./mymod"` 和 `import "mymod"` 都行，但 `import "lib/mymod"` 要从当前文件所在目录算起
-3. 装成包了吗？`chr packages` 看看
+3. 装成包了吗？`chpp packages` 看看
 
 ### 循环 import
 
 ```
-ERROR: circular import detected: a.chr
+ERROR: circular import detected: a.chpp
 ```
 
-`a.chr` 里 `import "b"`，`b.chr` 里又 `import "a"`。把共用的部分拆到第三个文件里。
+`a.chpp` 里 `import "b"`，`b.chpp` 里又 `import "a"`。把共用的部分拆到第三个文件里。
 
 ### 模块里的变量改了，外面看不到
 
 模块有独立作用域。想让外面改，导出函数：
 
 ```chronos
-// counter.chr
+// counter.chpp
 let count = 0
 
 fn inc() {
@@ -360,7 +360,7 @@ let data = os.readFile("config.txt")
 一个读配置文件的小模块：
 
 ```chronos
-// config.chr
+// config.chpp
 import "os"
 
 let CACHE = {}

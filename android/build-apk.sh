@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Chronos IDE —— 手动构建 APK（无需 Gradle）
+# Chronospp IDE —— 手动构建 APK（无需 Gradle）
 #
 # 用法:
 #   ./build-apk.sh [输出路径]          构建完整版（含 template.apk + keystore）
@@ -123,7 +123,7 @@ shutil.copy(os.path.join(build, "base.apk"), out)
 skip = {"template.apk", "chronos.keystore"} if bare else set()
 if bare:
     # 模板/裸版不需要 sh 编译内核（只有 IDE 需要）
-    skip.add("chr-linux-arm64")
+    skip.add("chpp-linux-arm64")
 with zipfile.ZipFile(out, "a", zipfile.ZIP_DEFLATED) as z:
     z.write(os.path.join(build, "dex", "classes.dex"), "classes.dex")
     for root, _, files in os.walk(assets):
@@ -141,7 +141,7 @@ KS="$HERE/chronos.keystore"
 if [ ! -f "$KS" ]; then
     keytool -genkeypair -keystore "$KS" -alias chronos -keyalg RSA -keysize 2048 \
         -storetype PKCS12 -validity 10000 -storepass android -keypass android \
-        -dname "CN=Chronos IDE, OU=Dev, O=Chronos, L=CN, ST=CN, C=CN" >/dev/null 2>&1
+        -dname "CN=Chronospp IDE, OU=Dev, O=Chronospp, L=CN, ST=CN, C=CN" >/dev/null 2>&1
 fi
 "$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
     --out "$OUT" "$BUILD/aligned.apk"

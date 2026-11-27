@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"chronos/interpreter"
-	"chronos/lexer"
-	"chronos/object"
-	"chronos/parser"
+	"chronospp/interpreter"
+	"chronospp/lexer"
+	"chronospp/object"
+	"chronospp/parser"
 )
 
 const PROMPT = "chronos> "
@@ -21,7 +21,7 @@ func Start(in io.Reader, out io.Writer) {
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	env := object.NewEnvironment()
 
-	fmt.Fprintln(out, "Chronos — a lightweight scripting language (Go implementation)")
+	fmt.Fprintln(out, "Chronospp — a lightweight scripting language (Go implementation)")
 	fmt.Fprintln(out, "Type 'exit' / 'quit' to leave, 'clear' to reset the environment.")
 	fmt.Fprintln(out)
 

@@ -21,7 +21,7 @@ type chmManifest struct {
 	Version     string            `json:"version"`
 	Description string            `json:"description"`
 	Author      string            `json:"author"`
-	Main        string            `json:"main"`   // 入口文件，默认 index.chr
+	Main        string            `json:"main"`   // 入口文件，默认 index.chpp
 	Files       []string          `json:"files"`  // 包含的文件列表
 	Requires    map[string]string `json:"requires"` // 依赖的其它包
 }
@@ -35,13 +35,13 @@ func packagesDir() string {
 	return filepath.Join(home, ".chronos", "packages")
 }
 
-// cmdInstall 实现 chr --install xxx.chm / chr install <包名>
+// cmdInstall 实现 chpp --install xxx.chm / chpp install <包名>
 func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "用法: chr install <包.chm | 包名>")
+		fmt.Fprintln(stderr, "用法: chpp install <包.chm | 包名>")
 		fmt.Fprintln(stderr, "\n  包.chm  安装本地 .chm 文件")
 		fmt.Fprintln(stderr, "  包名    从 GitHub 仓库拉取（需先有 chronos-packages 仓库）")
-		fmt.Fprintln(stderr, "\n相关: chr uninstall <包名>、chr packages")
+		fmt.Fprintln(stderr, "\n相关: chpp uninstall <包名>、chpp packages")
 		return 2
 	}
 
@@ -200,7 +200,7 @@ func fetchPackageViaAPI(client *http.Client, name string) (io.ReadCloser, int, e
 // cmdUninstall 卸载第三方包
 func cmdUninstall(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "用法: chr uninstall <包名>")
+		fmt.Fprintln(stderr, "用法: chpp uninstall <包名>")
 		return 2
 	}
 	name := args[0]
@@ -224,7 +224,7 @@ func cmdPackages(args []string, stdout, stderr io.Writer) int {
 	entries, err := os.ReadDir(dir)
 	if err != nil || len(entries) == 0 {
 		fmt.Fprintln(stdout, "还没有安装任何第三方包。")
-		fmt.Fprintf(stdout, "\n安装: chr install 包名\n")
+		fmt.Fprintf(stdout, "\n安装: chpp install 包名\n")
 		fmt.Fprintf(stdout, "目录: %s\n", dir)
 		return 0
 	}

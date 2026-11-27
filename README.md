@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/logo.png" width="180" alt="Chronos logo">
+<img src="docs/logo.png" width="180" alt="Chronospp logo">
 
-# Chronos
+# Chronospp
 
 **一门把「时间」做成一等公民的脚本语言**
 
@@ -11,8 +11,8 @@
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronos/release.yml?branch=main)](https://github.com/polear234/chronos/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronos)](https://goreportcard.com/report/github.com/polear234/chronos)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronospp/release.yml?branch=main)](https://github.com/polear234/chronospp/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronospp)](https://goreportcard.com/report/github.com/polear234/chronospp)
 [![Version](https://img.shields.io/badge/version-0.3.2-3ddcae.svg)]()
 [![Go Version](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/platform-android%20%7C%20linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
@@ -26,7 +26,7 @@
 
 ## 🕐 核心：变量时间旅行
 
-这是 Chronos 与其他脚本语言最大的不同 —— **每一次赋值都会被记录，你可以随时回到过去**。
+这是 Chronospp 与其他脚本语言最大的不同 —— **每一次赋值都会被记录，你可以随时回到过去**。
 
 ```chronos
 let traveller int hp = 100
@@ -80,7 +80,7 @@ t.commit()       // 提交，丢弃历史
 // 传统写法
 let evens = filter(map([1,2,3,4,5], fn(x){ x * 2 }), fn(x){ x % 4 == 0 })
 
-// Chronos
+// Chronospp
 let evens = [1,2,3,4,5]
     |> map(fn(x) { x * 2 })
     |> filter(fn(x) { x % 4 == 0 })
@@ -94,9 +94,9 @@ let evens = [1,2,3,4,5]
 
 这是 0.2 版本的新能力：**把脚本变成真正的安卓应用**。
 
-> APK / SH 编译由手机端的 **Chronos IDE** 提供；CLI 的 `chr build` 只生成桌面可执行文件。
+> APK / SH 编译由手机端的 **Chronospp IDE** 提供；CLI 的 `chpp build` 只生成桌面可执行文件。
 
-在 Chronos IDE 里写好代码，点按钮即可：
+在 Chronospp IDE 里写好代码，点按钮即可：
 
 | 按钮 | 产物 | 用途 |
 |------|------|------|
@@ -109,7 +109,7 @@ let evens = [1,2,3,4,5]
 <summary>技术细节：APK 是怎么生成的</summary>
 
 1. App 内预置一个「模板 APK」（裸的 WebView 宿主）
-2. 打包时读模板，用 `ZipOutputStream` 重写：剔除旧签名、注入 `assets/script.chr`
+2. 打包时读模板，用 `ZipOutputStream` 重写：剔除旧签名、注入 `assets/script.chpp`
 3. 关键约束：Android 11+ 要求 `resources.arsc` **不压缩且 4 字节对齐** —— 通过「首个条目 + STORED + 无 extra」让它天然落在偏移 44
 4. 用内置 keystore + `apksig` 重新签名（v1 + v2）
 5. 自定义包名：解析二进制 AXML 字符串池，替换 `package` 属性的字符串（支持 UTF-16 / UTF-8 两种编码）
@@ -147,10 +147,10 @@ sudo ./install.sh          # 系统级 → /usr/local/bin
 
 ```bash
 # Apple Silicon
-chmod +x chr-darwin-arm64 && sudo mv chr-darwin-arm64 /usr/local/bin/chr
+chmod +x chr-darwin-arm64 && sudo mv chr-darwin-arm64 /usr/local/bin/chpp
 
 # Intel
-chmod +x chr-darwin-amd64 && sudo mv chr-darwin-amd64 /usr/local/bin/chr
+chmod +x chr-darwin-amd64 && sudo mv chr-darwin-amd64 /usr/local/bin/chpp
 ```
 
 ### Android
@@ -160,9 +160,9 @@ chmod +x chr-darwin-amd64 && sudo mv chr-darwin-amd64 /usr/local/bin/chr
 ### 源码编译
 
 ```bash
-git clone https://github.com/polear234/chronos.git
+git clone https://github.com/polear234/chronospp.git
 cd chronos
-go build -o chr .      # 需要 Go 1.21+，零第三方依赖
+go build -o chpp .      # 需要 Go 1.21+，零第三方依赖
 ```
 
 ---
@@ -170,8 +170,8 @@ go build -o chr .      # 需要 Go 1.21+，零第三方依赖
 ## 🚀 第一个程序
 
 ```chronos
-// hello.chr
-print("Hello, Chronos!")
+// hello.chpp
+print("Hello, Chronospp!")
 
 fn fib(n) {
     if n <= 1 { return n }
@@ -181,8 +181,8 @@ print("fib(10) = " + str(fib(10)))   // 55
 ```
 
 ```bash
-chr run hello.chr
-# Hello, Chronos!
+chpp run hello.chpp
+# Hello, Chronospp!
 # fib(10) = 55
 ```
 
@@ -320,7 +320,7 @@ s = 42          // ✗ 报错：数字不会隐式转成字符串
 ### 模块
 
 ```chronos
-import "math_utils.chr" as math
+import "math_utils.chpp" as math
 print(math.add(1, 2))
 ```
 
@@ -371,19 +371,19 @@ h.length()  h.keys()  h.values()  h.has("k")
 ## 💻 命令行
 
 ```bash
-chr run app.chr          # 运行脚本
-chr build app.chr        # 编译成独立可执行文件
-chr build app.chr -p     # 明文模式（默认加密混淆）
-chr build app.chr -o out # 指定输出名
+chpp run app.chpp          # 运行脚本
+chpp build app.chpp        # 编译成独立可执行文件
+chpp build app.chpp -p     # 明文模式（默认加密混淆）
+chpp build app.chpp -o out # 指定输出名
 chronos repl                # 交互式 REPL
-chr version             # 查看版本
+chpp version             # 查看版本
 chronos help                # 帮助
 ```
 
 ### 编译产物
 
 ```bash
-chr build examples/hello.chr -o hello
+chpp build examples/hello.chpp -o hello
 ./hello        # 独立运行，不依赖源码
 ```
 
@@ -452,7 +452,7 @@ ANDROID_KEYSTORE_BASE64 = <你的 keystore 的 base64>
 keytool -genkeypair -keystore chronos.keystore -alias chronos \
         -keyalg RSA -keysize 2048 -validity 10000 \
         -storepass android -keypass android \
-        -dname "CN=Chronos, OU=Dev, O=Chronos, C=CN"
+        -dname "CN=Chronospp, OU=Dev, O=Chronospp, C=CN"
 base64 -w0 chronos.keystore    # 复制输出到 Secret
 ```
 
@@ -478,11 +478,11 @@ make test          # 同上
 
 ## 📚 模块与扩展
 
-- **[模块开发指南](docs/MODULES.md)** —— 写可复用的 `.chr` 模块，打包成 `.chm` 发布
+- **[模块开发指南](docs/MODULES.md)** —— 写可复用的 `.chpp` 模块，打包成 `.chm` 发布
 - 内置模块：`import "os"`（文件/命令）、`import "math"`（数学）
-- 安装第三方包：`chr install 包名` / `chr install 包.chm`
-- 查看已安装：`chr packages`
+- 安装第三方包：`chpp install 包名` / `chpp install 包.chm`
+- 查看已安装：`chpp packages`
 
 ## 📄 许可证
 
-[MIT](LICENSE) © 2026 Chronos Contributors
+[MIT](LICENSE) © 2026 Chronospp Contributors

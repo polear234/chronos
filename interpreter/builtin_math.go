@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"strings"
 
-	"chronos/object"
+	"chronospp/object"
 )
 
 // newMathModule 构造 Python 风格的 math 模块（跨平台，WASM 也能用）
@@ -175,7 +175,7 @@ func toFloat(o object.Object) (float64, bool) {
 	return 0, false
 }
 
-// nativeBool 把 Go bool 转成 Chronos 布尔对象
+// nativeBool 把 Go bool 转成 Chronospp 布尔对象
 func nativeBool(b bool) object.Object {
 	if b {
 		return TRUE

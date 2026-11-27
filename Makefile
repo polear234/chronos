@@ -1,7 +1,7 @@
 .PHONY: build run test clean dist install all
 
-BINARY := chr
-VERSION := 0.4.0
+BINARY := chpp
+VERSION := 1.0.0
 
 # 默认：编译出完全独立的静态二进制（无外部依赖，可直接拷贝到任何同架构 Linux 运行）
 build:
@@ -31,12 +31,12 @@ clean:
 dist:
 	@mkdir -p dist
 	@echo "=== 编译多平台独立二进制 ==="
-	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-linux-amd64 .
-	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-linux-arm64 .
-	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-darwin-amd64 .
-	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-darwin-arm64 .
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-windows-amd64.exe .
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chr-windows-arm64.exe .
+	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chpp-linux-amd64 .
+	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chpp-linux-arm64 .
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chpp-darwin-amd64 .
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chpp-darwin-arm64 .
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chpp-windows-amd64.exe .
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o dist/chpp-windows-arm64.exe .
 	@echo "=== 完成，产物在 dist/ ==="
 	@ls -lh dist/
 
@@ -46,12 +46,12 @@ install: build
 
 # 运行示例
 hello: build
-	./$(BINARY) run examples/hello.chr
+	./$(BINARY) run examples/hello.chpp
 
 fib: build
-	./$(BINARY) run examples/fibonacci.chr
+	./$(BINARY) run examples/fibonacci.chpp
 
 oop: build
-	./$(BINARY) run examples/oop.chr
+	./$(BINARY) run examples/oop.chpp
 
 .PHONY: hello fib oop

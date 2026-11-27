@@ -39,7 +39,7 @@ if [ "$(uname -m)" != "x86_64" ] && head -c4 "$WIXL" 2>/dev/null | grep -q $'\x7
 fi
 
 for ARCH in amd64 arm64; do
-    EXE="$HERE/bin/chr-windows-$ARCH.exe"
+    EXE="$HERE/bin/chpp-windows-$ARCH.exe"
     if [ ! -f "$EXE" ]; then
         echo "跳过 $ARCH：缺少 $EXE（先跑 make dist）" >&2
         continue
@@ -51,10 +51,10 @@ for ARCH in amd64 arm64; do
 
     echo "==> $ARCH: 便携 ZIP"
     TMP="$(mktemp -d)"
-    cp "$EXE" "$TMP/chr.exe"
+    cp "$EXE" "$TMP/chpp.exe"
     cp "$HERE/README.md" "$HERE/LICENSE" "$TMP/" 2>/dev/null || true
     mkdir -p "$TMP/examples"
-    cp "$HERE"/examples/*.chr "$TMP/examples/" 2>/dev/null || true
+    cp "$HERE"/examples/*.chpp "$TMP/examples/" 2>/dev/null || true
     ( cd "$TMP" && zip -q -r "$OUT/chronos-$VERSION-windows-$ARCH.zip" . )
     rm -rf "$TMP"
 done

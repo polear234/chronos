@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chronos/object"
+	"chronospp/object"
 )
 
 // builtinModules 内置模块：import "os" 直接拿到，不走文件系统
@@ -19,7 +19,7 @@ var builtinModules = map[string]func() *object.Module{
 
 // lookupBuiltinModule 按名字返回内置模块，没有则返回 nil
 func lookupBuiltinModule(name string) *object.Module {
-	// 允许 "os" / "os.chr" / "./os" 这类写法都命中
+	// 允许 "os" / "os.chpp" / "./os" 这类写法都命中
 	base := strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
 	if fn, ok := builtinModules[base]; ok {
 		return fn()

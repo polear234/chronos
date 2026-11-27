@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 交叉编译 Chronos 为多平台独立二进制
+# 交叉编译 Chronospp 为多平台独立二进制
 # 用法: ./scripts/build-all.sh
 set -euo pipefail
 

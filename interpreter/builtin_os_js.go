@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chronos/object"
+	"chronospp/object"
 )
 
 // builtinModules 内置模块：import "os" 直接拿到，不走文件系统

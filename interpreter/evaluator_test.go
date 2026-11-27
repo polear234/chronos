@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"chronos/lexer"
-	"chronos/object"
-	"chronos/parser"
+	"chronospp/lexer"
+	"chronospp/object"
+	"chronospp/parser"
 )
 
 func testEval(t *testing.T, input string) object.Object {
@@ -852,7 +852,7 @@ func TestImportModule(t *testing.T) {
 	dir := t.TempDir()
 
 	// 写模块文件
-	modPath := filepath.Join(dir, "math.chr")
+	modPath := filepath.Join(dir, "math.chpp")
 	modSrc := `
 let PI = 3.14159
 fn square(x) { return x * x }
@@ -883,7 +883,7 @@ m.square(5) + m.add(1, 2)`
 
 func TestImportDefaultAlias(t *testing.T) {
 	dir := t.TempDir()
-	modPath := filepath.Join(dir, "util.chr")
+	modPath := filepath.Join(dir, "util.chpp")
 	modSrc := `fn double(x) { return x * 2 }`
 	if err := os.WriteFile(modPath, []byte(modSrc), 0644); err != nil {
 		t.Fatalf("write module: %v", err)
@@ -905,7 +905,7 @@ func TestImportDefaultAlias(t *testing.T) {
 
 func TestImportModuleAccessString(t *testing.T) {
 	dir := t.TempDir()
-	modPath := filepath.Join(dir, "msg.chr")
+	modPath := filepath.Join(dir, "msg.chpp")
 	modSrc := `let greeting = "hi"`
 	if err := os.WriteFile(modPath, []byte(modSrc), 0644); err != nil {
 		t.Fatalf("write module: %v", err)
@@ -929,9 +929,9 @@ m.greeting`
 
 func TestCircularImport(t *testing.T) {
 	dir := t.TempDir()
-	// a.chr 导入 b.chr，b.chr 导入 a.chr → 循环
-	os.WriteFile(filepath.Join(dir, "a.chr"), []byte(`import "b"`), 0644)
-	os.WriteFile(filepath.Join(dir, "b.chr"), []byte(`import "a"`), 0644)
+	// a.chpp 导入 b.chpp，b.chpp 导入 a.chpp → 循环
+	os.WriteFile(filepath.Join(dir, "a.chpp"), []byte(`import "b"`), 0644)
+	os.WriteFile(filepath.Join(dir, "b.chpp"), []byte(`import "a"`), 0644)
 
 	mainSrc := `import "a" as a`
 	l := lexer.New(mainSrc)
@@ -1109,7 +1109,7 @@ func TestBooleanLogic(t *testing.T) {
 
 func TestVirtualModuleFS(t *testing.T) {
 	vfs := map[string]string{
-		"lib.chr": "let add = fn(a, b) { return a + b }\n",
+		"lib.chpp": "let add = fn(a, b) { return a + b }\n",
 	}
 	SetModuleReader(func(p string) ([]byte, error) {
 		for k, v := range vfs {

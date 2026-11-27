@@ -10,18 +10,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chronos/interpreter"
-	"chronos/lexer"
-	"chronos/object"
-	"chronos/parser"
-	"chronos/repl"
+	"chronospp/interpreter"
+	"chronospp/lexer"
+	"chronospp/object"
+	"chronospp/parser"
+	"chronospp/repl"
 )
 
 // version 由 ldflags 在编译期注入（-X main.version=...），必须是 var 不能是 const
-var version = "0.4.0"
+var version = "1.0.0"
 
 func main() {
-	// 被 chr build 编译过的程序：直接执行内嵌脚本
+	// 被 chpp build 编译过的程序：直接执行内嵌脚本
 	if script, ok := selfPayload(); ok {
 		os.Exit(runEmbedded(script))
 	}
@@ -63,7 +63,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 
 	case "version", "-v", "-version", "--version":
-		fmt.Fprintf(stdout, "Chronos %s\n", version)
+		fmt.Fprintf(stdout, "Chronospp %s\n", version)
 		return 0
 
 	case "help", "-h", "-help", "--help":
@@ -85,8 +85,8 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: chr run [options] <file.chr>")
-		fmt.Fprintln(stderr, "       chr     -run <file.chr>")
+		fmt.Fprintln(stderr, "Usage: chpp run [options] <file.chpp>")
+		fmt.Fprintln(stderr, "       chpp     -run <file.chpp>")
 		fmt.Fprintln(stderr, "\nOptions:")
 		fs.PrintDefaults()
 	}
@@ -94,7 +94,7 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	files := fs.Args()
 	if len(files) == 0 {
-		fmt.Fprintln(stderr, "error: no input file (use 'chr run file.chr', or '-' to read from stdin)")
+		fmt.Fprintln(stderr, "error: no input file (use 'chpp run file.chpp', or '-' to read from stdin)")
 		return 2
 	}
 
@@ -115,9 +115,9 @@ func cmdRun(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return exitCode
 }
 
-// isScriptFile 判断文件名是否以受支持的脚本后缀结尾（.chr 或旧版 .px）
+// isScriptFile 判断文件名是否以受支持的脚本后缀结尾（.chpp 新后缀，.chpp/.px 兼容旧版）
 func isScriptFile(name string) bool {
-	return strings.HasSuffix(name, ".chr") || strings.HasSuffix(name, ".px")
+	return strings.HasSuffix(name, ".chpp") || strings.HasSuffix(name, ".chpp") || strings.HasSuffix(name, ".px")
 }
 
 // isScriptArg 判断参数是否像脚本路径（含脚本后缀或路径分隔符）
@@ -134,29 +134,29 @@ func isScriptArg(arg string) bool {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintf(w, `Chronos %s — a lightweight scripting language
+	fmt.Fprintf(w, `Chronospp %s — a lightweight scripting language
 
 Usage:
-  chr                              Start the interactive REPL
-  chr run <file.chr>               Run a script file
-  chr run -                        Read and run source from stdin
-  chr build <file.chr>             Compile into a standalone executable
-  chr build <file.chr> -o <name>   Compile with a custom output name
-  chr serve [dir] [-p port]        Serve a directory over HTTP
-  chr upgrade [--check]            Update to the latest release
-  chr install <pkg.chm | name>     Install a third-party package
-  chr uninstall <name>             Remove an installed package
-  chr packages                     List installed packages
-  chr version                      Print version
-  chr help                         Show this help
+  chpp                              Start the interactive REPL
+  chpp run <file.chpp>               Run a script file
+  chpp run -                        Read and run source from stdin
+  chpp build <file.chpp>             Compile into a standalone executable
+  chpp build <file.chpp> -o <name>   Compile with a custom output name
+  chpp serve [dir] [-p port]        Serve a directory over HTTP
+  chpp upgrade [--check]            Update to the latest release
+  chpp install <pkg.chm | name>     Install a third-party package
+  chpp uninstall <name>             Remove an installed package
+  chpp packages                     List installed packages
+  chpp version                      Print version
+  chpp help                         Show this help
 
 Examples:
-  chr
-  chr run examples/hello.chr
-  chr build examples/hello.chr             # 产出 ./hello 可执行文件
-  chr build app.chr -o /usr/local/bin/app
-  chr serve ./public -p 8080               # 静态网站服务器
-  echo 'print("hi")' | chr run -
+  chpp
+  chpp run examples/hello.chpp
+  chpp build examples/hello.chpp             # 产出 ./hello 可执行文件
+  chpp build app.chpp -o /usr/local/bin/app
+  chpp serve ./public -p 8080               # 静态网站服务器
+  echo 'print("hi")' | chpp run -
 `, version)
 }
 

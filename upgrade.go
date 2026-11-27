@@ -29,7 +29,7 @@ type ghRelease struct {
 	} `json:"assets"`
 }
 
-// cmdUpgrade 实现 chr --upgrade [--check] [--force]
+// cmdUpgrade 实现 chpp --upgrade [--check] [--force]
 // 从 GitHub 拉取最新版本并替换当前可执行文件。
 func cmdUpgrade(args []string, stdout, stderr io.Writer) int {
 	checkOnly := false
@@ -41,7 +41,7 @@ func cmdUpgrade(args []string, stdout, stderr io.Writer) int {
 		case "--force", "-force", "-f":
 			force = true
 		case "--help", "-h":
-			fmt.Fprintln(stdout, "用法: chr --upgrade [--check] [--force]")
+			fmt.Fprintln(stdout, "用法: chpp --upgrade [--check] [--force]")
 			fmt.Fprintln(stdout, "\n  --check   只检查是否有新版本，不下载")
 			fmt.Fprintln(stdout, "  --force   版本相同也强制重新下载")
 			return 0
@@ -70,7 +70,7 @@ func cmdUpgrade(args []string, stdout, stderr io.Writer) int {
 
 	if checkOnly {
 		fmt.Fprintf(stdout, "\n有新版本可用: %s → %s\n", version, latest)
-		fmt.Fprintf(stdout, "运行 chr --upgrade 更新\n")
+		fmt.Fprintf(stdout, "运行 chpp --upgrade 更新\n")
 		return 0
 	}
 
@@ -243,7 +243,7 @@ func replaceSelf(newPath, selfPath string) error {
 
 	// Unix：先写临时文件到同目录再原子替换
 	dir := filepath.Dir(selfPath)
-	tmpInDir, err := os.CreateTemp(dir, ".chr-upgrade-*")
+	tmpInDir, err := os.CreateTemp(dir, ".chpp-upgrade-*")
 	if err != nil {
 		return err
 	}

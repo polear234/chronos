@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"chronos/ast"
-	"chronos/object"
+	"chronospp/ast"
+	"chronospp/object"
 )
 
 // TODO(并发): start() 用 goroutine 并行执行，每个任务在隔离子环境里跑。

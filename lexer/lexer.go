@@ -5,7 +5,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"chronos/token"
+	"chronospp/token"
 )
 
 type Lexer struct {
