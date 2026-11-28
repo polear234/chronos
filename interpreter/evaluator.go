@@ -320,7 +320,7 @@ func evalConstStatement(stmt *ast.ConstStatement, env *object.Environment) objec
 }
 
 func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) object.Object {
-	var result object.Object
+	var result object.Object = NIL
 	for _, stmt := range block.Statements {
 		result = Eval(stmt, env)
 		if result != nil {
@@ -898,6 +898,25 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return nativeBoolToBooleanObject(objectsEqual(left, right))
 	case left.Type() == object.ARRAY_OBJ && right.Type() == object.ARRAY_OBJ:
 		return evalArrayInfixExpression(operator, left, right)
+	// 字符串 + 数字：自动转字符串拼接
+	case left.Type() == object.STRING_OBJ && (right.Type() == object.INTEGER_OBJ || right.Type() == object.FLOAT_OBJ) && operator == "+":
+		return &object.String{Value: left.(*object.String).Value + right.Inspect()}
+	case (left.Type() == object.INTEGER_OBJ || left.Type() == object.FLOAT_OBJ) && right.Type() == object.STRING_OBJ && operator == "+":
+		return &object.String{Value: left.Inspect() + right.(*object.String).Value}
+	// 字符串 * 整数：重复
+	case left.Type() == object.STRING_OBJ && right.Type() == object.INTEGER_OBJ && operator == "*":
+		return &object.String{Value: strings.Repeat(left.(*object.String).Value, int(right.(*object.Integer).Value))}
+	case left.Type() == object.INTEGER_OBJ && right.Type() == object.STRING_OBJ && operator == "*":
+		return &object.String{Value: strings.Repeat(right.(*object.String).Value, int(left.(*object.Integer).Value))}
+	// 布尔 + 布尔：true=1 false=0
+	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ && (operator == "+" || operator == "*"):
+		lv, rv := 0, 0
+		if left.(*object.Boolean).Value { lv = 1 }
+		if right.(*object.Boolean).Value { rv = 1 }
+		if operator == "+" {
+			return &object.Integer{Value: int64(lv + rv)}
+		}
+		return &object.Integer{Value: int64(lv * rv)}
 	case operator == "!=":
 		return nativeBoolToBooleanObject(!objectsEqual(left, right))
 	default:
@@ -1143,20 +1162,29 @@ func evalIndexExpression(ie *ast.IndexExpression, env *object.Environment) objec
 		if !ok {
 			return newError("array index must be integer, got %s", index.Type())
 		}
-		if idx.Value < 0 || idx.Value >= int64(len(l.Elements)) {
+		// 负索引从末尾开始计数（Python 风格）
+		actualIdx := idx.Value
+		if actualIdx < 0 {
+			actualIdx = int64(len(l.Elements)) + actualIdx
+		}
+		if actualIdx < 0 || actualIdx >= int64(len(l.Elements)) {
 			return NIL
 		}
-		return l.Elements[idx.Value]
+		return l.Elements[actualIdx]
 	case *object.String:
 		idx, ok := index.(*object.Integer)
 		if !ok {
 			return newError("string index must be integer, got %s", index.Type())
 		}
 		runes := []rune(l.Value)
-		if idx.Value < 0 || idx.Value >= int64(len(runes)) {
+		actualIdx := idx.Value
+		if actualIdx < 0 {
+			actualIdx = int64(len(runes)) + actualIdx
+		}
+		if actualIdx < 0 || actualIdx >= int64(len(runes)) {
 			return NIL
 		}
-		return &object.String{Value: string(runes[idx.Value])}
+		return &object.String{Value: string(runes[actualIdx])}
 	case *object.Hash:
 		key, ok := index.(object.Hashable)
 		if !ok {

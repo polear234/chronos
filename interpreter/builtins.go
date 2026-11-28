@@ -14,6 +14,10 @@ var builtins = map[string]*object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			parts := make([]string, 0, len(args))
 			for _, arg := range args {
+				if arg == nil {
+					parts = append(parts, "nil")
+					continue
+				}
 				parts = append(parts, arg.Inspect())
 			}
 			fmt.Fprintln(outputWriter, strings.Join(parts, " "))
@@ -65,6 +69,10 @@ var builtins = map[string]*object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			parts := make([]string, 0, len(args))
 			for _, arg := range args {
+				if arg == nil {
+					parts = append(parts, "nil")
+					continue
+				}
 				parts = append(parts, arg.Inspect())
 			}
 			fmt.Fprintln(outputWriter, strings.Join(parts, " "))

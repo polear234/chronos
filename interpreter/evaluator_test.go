@@ -1685,3 +1685,42 @@ try {
 x`
 	testIntegerObject(t, testEval(t, fail), 1)
 }
+
+func TestBugFixes(t *testing.T) {
+	// 负索引
+	neg := `let arr = [1, 2, 3, 4, 5]
+arr[-1]`
+	testIntegerObject(t, testEval(t, neg), 5)
+
+	neg2 := `let arr = [1, 2, 3]
+arr[-2]`
+	testIntegerObject(t, testEval(t, neg2), 2)
+
+	// 字符串负索引
+	sneg := `"hello"[-1]`
+	if r := testEval(t, sneg); r.Inspect() != "o" {
+		t.Errorf("hello[-1] = %s, 期望 o", r.Inspect())
+	}
+
+	// 字符串 + 数字自动拼接
+	concat := `"n=" + 42`
+	if r := testEval(t, concat); r.Inspect() != "n=42" {
+		t.Errorf("拼接 = %s, 期望 n=42", r.Inspect())
+	}
+
+	// 字符串 * 数字
+	repeat := `"ab" * 3`
+	if r := testEval(t, repeat); r.Inspect() != "ababab" {
+		t.Errorf("重复 = %s, 期望 ababab", r.Inspect())
+	}
+
+	// 布尔 + 布尔
+	boolAdd := `true + true`
+	testIntegerObject(t, testEval(t, boolAdd), 2)
+
+	// 空函数不崩溃
+	emptyFn := `(fn() { })()`
+	if r := testEval(t, emptyFn); r == nil {
+		t.Error("空函数返回 nil，应该返回 NIL 对象")
+	}
+}
