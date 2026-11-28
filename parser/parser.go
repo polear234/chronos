@@ -96,6 +96,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseTryStatement()
 	case token.THROW:
 		return p.parseThrowStatement()
+	case token.TRANSACTION:
+		return p.parseTransactionStatement()
 	case token.BREAK:
 		return &ast.BreakStatement{Token: p.curToken}
 	case token.CONTINUE:
@@ -777,6 +779,17 @@ func (p *Parser) parseInterfaceLiteral() ast.Expression {
 		return nil
 	}
 	return il
+}
+
+// parseTransactionStatement 解析事务块：
+//   transaction { ... }
+func (p *Parser) parseTransactionStatement() ast.Statement {
+	stmt := &ast.TransactionStatement{Token: p.curToken}
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+	stmt.Body = p.parseBlockStatement()
+	return stmt
 }
 
 // parseStructLiteral 解析 C 风格结构体：

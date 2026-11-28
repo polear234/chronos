@@ -583,3 +583,60 @@ func (e *Environment) Snapshot() map[string]Object {
 	}
 	return out
 }
+
+// MarkPoint 全局时间点：记录某时刻所有变量的值
+type MarkPoint struct {
+	Vars map[string]Object
+	Time int64 // 创建时刻（纳秒），用于排序和调试
+	Name string
+}
+
+func (m *MarkPoint) Type() ObjectType { return "MARK" }
+func (m *MarkPoint) Inspect() string {
+	return "<mark " + m.Name + ">"
+}
+
+// SnapshotMark 创建当前环境的全局时间点
+func (e *Environment) SnapshotMark(name string) *MarkPoint {
+	return &MarkPoint{
+		Vars: e.Snapshot(),
+		Name: name,
+	}
+}
+
+// RestoreMark 把环境恢复到某个时间点（只恢复快照里有的变量）
+func (e *Environment) RestoreMark(m *MarkPoint) int {
+	count := 0
+	for name, val := range m.Vars {
+		if e.consts[name] {
+			continue // 常量不恢复
+		}
+		e.store[name] = val
+		count++
+	}
+	return count
+}
+
+// DiffMark 对比当前环境和时间点，返回变化的变量名列表
+func (e *Environment) DiffMark(m *MarkPoint) []string {
+	changed := []string{}
+	seen := make(map[string]bool)
+
+	for name, oldVal := range m.Vars {
+		seen[name] = true
+		cur, ok := e.store[name]
+		if !ok {
+			changed = append(changed, name)
+			continue
+		}
+		if oldVal.Inspect() != cur.Inspect() || oldVal.Type() != cur.Type() {
+			changed = append(changed, name)
+		}
+	}
+	for name := range e.store {
+		if !seen[name] {
+			changed = append(changed, name)
+		}
+	}
+	return changed
+}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 	"strings"
 
 	"chronospp/ast"
@@ -158,6 +159,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalClassLiteral(node, env)
 	case *ast.InterfaceLiteral:
 		return evalInterfaceLiteral(node, env)
+	case *ast.TransactionStatement:
+		return evalTransactionStatement(node, env)
 	case *ast.NewExpression:
 		return evalNewExpression(node, env)
 	case *ast.ThisExpression:
@@ -459,6 +462,53 @@ func evalCallExpression(ce *ast.CallExpression, env *object.Environment) object.
 		switch id.Value {
 		case "withSnapshot":
 			return evalWithSnapshot(ce.Arguments, env)
+		case "mark":
+			// mark() / mark("名字")：记录当前所有变量
+			name := "t" + strconv.FormatInt(time.Now().UnixNano(), 36)
+			if len(ce.Arguments) > 0 {
+				nameVal := Eval(ce.Arguments[0], env)
+				if isError(nameVal) {
+					return nameVal
+				}
+				name = nameVal.Inspect()
+			}
+			return env.SnapshotMark(name)
+
+		case "restore":
+			// restore(mark)：恢复到某个时间点
+			if len(ce.Arguments) != 1 {
+				return newError("restore 需要一个时间点参数")
+			}
+			markVal := Eval(ce.Arguments[0], env)
+			if isError(markVal) {
+				return markVal
+			}
+			mp, ok := markVal.(*object.MarkPoint)
+			if !ok {
+				return newError("restore 的参数要是 mark() 返回的时间点")
+			}
+			count := env.RestoreMark(mp)
+			return &object.Integer{Value: int64(count)}
+
+		case "diff":
+			// diff(mark)：返回与时间点之间变化的变量名
+			if len(ce.Arguments) != 1 {
+				return newError("diff 需要一个时间点参数")
+			}
+			markVal := Eval(ce.Arguments[0], env)
+			if isError(markVal) {
+				return markVal
+			}
+			mp, ok := markVal.(*object.MarkPoint)
+			if !ok {
+				return newError("diff 的参数要是 mark() 返回的时间点")
+			}
+			changed := env.DiffMark(mp)
+			out := make([]object.Object, len(changed))
+			for i, name := range changed {
+				out[i] = &object.String{Value: name}
+			}
+			return &object.Array{Elements: out}
 		case "Timeline":
 			return evalTimelineConstruct(ce.Arguments, env)
 		case "start":
@@ -1429,6 +1479,59 @@ func evalMethodCallExpression(mce *ast.MethodCallExpression, env *object.Environ
 		return oldVal
 	}
 
+	// 时间旅行 API：x.history() / x.at(n) / x.changes() / x.step() / x.reset()
+	if id, isIdent := mce.Object.(*ast.Identifier); isIdent {
+		if existing, ok := env.Get(id.Value); ok {
+			if trav, isTrav := existing.(*object.Traveller); isTrav {
+				switch mce.Method {
+				case "history":
+					items := trav.HistoryList()
+					out := make([]object.Object, len(items))
+					copy(out, items)
+					return &object.Array{Elements: out}
+
+				case "at":
+					if len(mce.Arguments) != 1 {
+						return newError("at() 需要一个索引")
+					}
+					idxVal := Eval(mce.Arguments[0], env)
+					if isError(idxVal) {
+						return idxVal
+					}
+					n, ok := idxVal.(*object.Integer)
+					if !ok {
+						return newError("at() 的索引要是整数")
+					}
+					v, found := trav.At(int(n.Value))
+					if !found {
+						return newError("历史索引 %d 超出范围（共 %d 步）", n.Value, trav.Step())
+					}
+					return v
+
+				case "changes":
+					changes := trav.Changes()
+					out := make([]object.Object, 0, len(changes))
+					for _, c := range changes {
+						pairs := map[object.HashKey]object.HashPair{}
+						k1 := &object.String{Value: "from"}
+						k2 := &object.String{Value: "to"}
+						pairs[k1.HashKey()] = object.HashPair{Key: k1, Value: c[0]}
+						pairs[k2.HashKey()] = object.HashPair{Key: k2, Value: c[1]}
+						out = append(out, &object.Hash{Pairs: pairs})
+					}
+					return &object.Array{Elements: out}
+
+				case "step":
+					return &object.Integer{Value: int64(trav.Step())}
+
+				case "reset":
+					trav.Reset()
+					return NIL
+				}
+			}
+		}
+	}
+
 	obj := Eval(mce.Object, env)
 	if isError(obj) {
 		return obj
@@ -1669,6 +1772,28 @@ func evalClassLiteral(cl *ast.ClassLiteral, env *object.Environment) object.Obje
 
 	env.Define(cl.Name.Value, class)
 	return class
+}
+
+// evalTransactionStatement 执行事务块：
+// 先记录快照，执行块内代码；若抛错则恢复快照并重新抛出
+func evalTransactionStatement(ts *ast.TransactionStatement, env *object.Environment) object.Object {
+	snap := env.SnapshotMark("transaction")
+
+	result := Eval(ts.Body, env)
+
+	// 出错：回滚后把错误往外抛
+	if isError(result) {
+		env.RestoreMark(snap)
+		return result
+	}
+
+	// throw 语句返回的是错误对象，同样回滚
+	if err, ok := result.(*object.Error); ok {
+		env.RestoreMark(snap)
+		return err
+	}
+
+	return result
 }
 
 // evalInterfaceLiteral 求值接口声明

@@ -51,3 +51,43 @@ func (t *Traveller) Rollback() (Object, bool) {
 	t.Current = oldVal
 	return oldVal, true
 }
+
+// HistoryList 返回历史值列表（从旧到新，不含当前值）
+func (t *Traveller) HistoryList() []Object {
+	out := make([]Object, len(t.History))
+	copy(out, t.History)
+	return out
+}
+
+// At 返回第 n 步之前的值（n=0 表示最早的历史）
+func (t *Traveller) At(n int) (Object, bool) {
+	if n < 0 || n >= len(t.History) {
+		return nil, false
+	}
+	return t.History[n], true
+}
+
+// Changes 返回所有变化记录：[(旧值, 新值), ...]
+func (t *Traveller) Changes() [][2]Object {
+	out := make([][2]Object, 0, len(t.History))
+	for i, old := range t.History {
+		var next Object
+		if i+1 < len(t.History) {
+			next = t.History[i+1]
+		} else {
+			next = t.Current
+		}
+		out = append(out, [2]Object{old, next})
+	}
+	return out
+}
+
+// Reset 清空历史，只保留当前值
+func (t *Traveller) Reset() {
+	t.History = t.History[:0]
+}
+
+// Step 返回历史深度
+func (t *Traveller) Step() int {
+	return len(t.History)
+}

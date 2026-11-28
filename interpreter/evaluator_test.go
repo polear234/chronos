@@ -1619,3 +1619,69 @@ let c = a + b
 len(c)`
 	testIntegerObject(t, testEval(t, src), 4)
 }
+
+func TestTimeTravel(t *testing.T) {
+	// traveller 历史
+	src := `let traveller int hp = 100
+hp = 80
+hp = 60
+hp.step()`
+	testIntegerObject(t, testEval(t, src), 2)
+
+	// 历史回看
+	at := `let traveller int hp = 100
+hp = 80
+hp = 60
+hp.at(0)`
+	testIntegerObject(t, testEval(t, at), 100)
+
+	// rollback
+	rb := `let traveller int hp = 100
+hp = 80
+hp = 60
+hp.rollback()
+hp`
+	testIntegerObject(t, testEval(t, rb), 80)
+}
+
+func TestMarkRestore(t *testing.T) {
+	src := `let a = 1
+let b = 2
+let t = mark("t")
+a = 10
+b = 20
+restore(t)
+a * 100 + b`
+	testIntegerObject(t, testEval(t, src), 102)
+
+	// diff
+	df := `let a = 1
+let m = mark("m")
+a = 2
+len(diff(m)) >= 1`
+	if r := testEval(t, df); r.Inspect() != "true" {
+		t.Errorf("diff 应该检测到变化，得到 %s", r.Inspect())
+	}
+}
+
+func TestTransaction(t *testing.T) {
+	// 成功提交
+	ok := `let x = 1
+transaction {
+    x = 5
+}
+x`
+	testIntegerObject(t, testEval(t, ok), 5)
+
+	// 失败回滚
+	fail := `let x = 1
+try {
+    transaction {
+        x = 99
+        throw "boom"
+    }
+} catch (e) {
+}
+x`
+	testIntegerObject(t, testEval(t, fail), 1)
+}

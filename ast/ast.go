@@ -516,6 +516,16 @@ type ClassLiteral struct {
 	TypeParams  []string        // 泛型类型参数：class Box<T> 里的 ["T"]
 }
 
+// TransactionStatement 事务块：出错自动回滚所有变量
+type TransactionStatement struct {
+	Token token.Token
+	Body  *BlockStatement
+}
+
+func (ts *TransactionStatement) statementNode()       {}
+func (ts *TransactionStatement) TokenLiteral() string { return ts.Token.Literal }
+func (ts *TransactionStatement) String() string       { return "transaction { ... }" }
+
 // InterfaceLiteral 接口声明：interface Name { fn method(args) }
 type InterfaceLiteral struct {
 	Token   token.Token
