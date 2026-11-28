@@ -64,12 +64,17 @@ function appendOut(text, cls){
   consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
-// UI 回调桥（iframe → WASM）
+// UI 回调桥（iframe → WASM → 重绘）
 window.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'chronosUI') {
     if (typeof window.chronosUICallback === 'function') {
-      try { window.chronosUICallback(e.data.id, e.data.value); }
-      catch (err) { console.error('callback error', err); }
+      try {
+        // 回调执行后返回最新 HTML，前端重绘
+        const newHtml = window.chronosUICallback(e.data.id, e.data.value);
+        if (newHtml && newHtml.length > 0) {
+          renderUI(newHtml);
+        }
+      } catch (err) { console.error('callback error', err); }
     }
   }
 });

@@ -412,6 +412,13 @@ document.getElementById('shBtn').addEventListener('click', () => {
     alert('编译 SH 仅在 Android App 内可用');
     return;
   }
+  // 用了 ui 模块的脚本不能编译成 SH（终端里没有图形界面）
+  if (/import\s+[\"']ui[\"']/.test(codeEl.value) || /\bui\.(title|text|button|input|show)\s*\(/.test(codeEl.value)) {
+    alert('这个脚本使用了 ui 模块，无法编译成 SH。\n\n' +
+          'SH 脚本运行在终端里，没有图形界面。\n' +
+          '请用「打包 APK」把它做成应用，或去掉 ui 相关代码。');
+    return;
+  }
   if (!syntaxCheck('生成 SH')) return;
   bridge.compileShell(curName, codeEl.value);
 });
@@ -563,12 +570,15 @@ function closeUiScreen() {
   document.getElementById('uiFrame').srcdoc = '';
 }
 
-// UI 回调转发给 WASM
+// UI 回调转发给 WASM，并把新 HTML 推回 iframe
 window.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'chronosUI') {
     try {
       if (typeof chronosUICallback === 'function') {
-        chronosUICallback(e.data.id, e.data.value);
+        const newHtml = chronosUICallback(e.data.id, e.data.value);
+        if (newHtml && newHtml.length > 0) {
+          showUiScreen(newHtml);   // 重绘
+        }
       }
     } catch (err) { console.error('UI callback error:', err); }
   }

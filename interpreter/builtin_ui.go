@@ -12,25 +12,38 @@ import (
 
 // UIElement 一个 UI 组件
 type UIElement struct {
-	Tag      string            // "title" "text" "button" "input" "list" "progress" "select" "checkbox" "slider" "image" "row" "column" "card"
-	Text     string
-	Attrs    map[string]string
-	Children []*UIElement
-	Callback *object.Function   // 点击/输入时的回调
-	CallbackID string          // 回调注册 ID
+	Tag        string            // "title" "text" "button" "input" "list" "progress" "select" "checkbox" "slider" "image" "row" "column" "card"
+	Text       string
+	Attrs      map[string]string
+	Children   []*UIElement
+	Callback   *object.Function   // 点击/输入时的回调
+	CallbackID string            // 回调注册 ID
+	ElemID     string            // 元素唯一 ID（用于 update）
+	callbackEnv *object.Environment  // 回调执行环境
+}
+
+func (el *UIElement) Type() object.ObjectType { return "UI_ELEMENT" }
+func (el *UIElement) Inspect() string {
+	return "<ui " + el.Tag + " id=" + el.ElemID + ">"
+}
+
+// Update 更新元素文本（返回新值供链式使用）
+func (el *UIElement) Update(text string) {
+	el.Text = text
 }
 
 // UIState 全局 UI 状态
 type UIState struct {
-	mu      sync.Mutex
-	Root    []*UIElement        // 顶层元素列表
-	Callbacks map[string]*object.Function  // 回调注册表
-	Seq     int                // 回调 ID 计数器
-	Output  string             // 生成的 HTML
+	mu        sync.Mutex
+	Root      []*UIElement                  // 顶层元素列表
+	Callbacks map[string]*object.Function   // 回调注册表
+	Elements  map[string]*UIElement         // 元素 ID → 元素（update 用）
+	Seq       int                           // ID 计数器
 }
 
 var uiState = &UIState{
 	Callbacks: make(map[string]*object.Function),
+	Elements:  make(map[string]*UIElement),
 }
 
 // ResetUI 清空 UI 状态（供 WASM 每次执行前调用）
@@ -40,7 +53,16 @@ func ResetUI() { resetUI() }
 func resetUI() {
 	uiState.Root = nil
 	uiState.Callbacks = make(map[string]*object.Function)
+	uiState.Elements = make(map[string]*UIElement)
 	uiState.Seq = 0
+}
+
+// registerElement 注册元素，分配 ID
+func registerElement(el *UIElement) *UIElement {
+	uiState.Seq++
+	el.ElemID = fmt.Sprintf("e%d", uiState.Seq)
+	uiState.Elements[el.ElemID] = el
+	return el
 }
 
 // registerCallback 注册一个回调，返回 ID
@@ -52,15 +74,20 @@ func registerCallback(fn *object.Function) string {
 }
 
 // InvokeUICallback 由外部（WASM/HTTP）调用回调
-func InvokeUICallback(id string, arg string) {
+// 执行完回调后返回最新的 HTML，供前端重绘
+func InvokeUICallback(id string, arg string) string {
 	uiState.mu.Lock()
 	fn, ok := uiState.Callbacks[id]
 	uiState.mu.Unlock()
 	if !ok {
-		return
+		return GetUIHTML()
 	}
-	// 调用回调函数
+
+	// 回调执行环境：优先用注册时的环境
 	env := fn.Env
+	if env == nil {
+		env = object.NewEnvironment()
+	}
 	extended := object.NewEnclosedEnvironment(env)
 	if len(fn.Parameters) > 0 {
 		extended.Define(fn.Parameters[0].Value, &object.String{Value: arg})
@@ -68,6 +95,9 @@ func InvokeUICallback(id string, arg string) {
 		extended.Define("value", &object.String{Value: arg})
 	}
 	Eval(fn.Body, extended)
+
+	// 返回更新后的完整 HTML（前端据此重绘）
+	return GetUIHTML()
 }
 
 // GetUIHTML 返回生成的 HTML（供 WebView/浏览器渲染）
@@ -153,16 +183,16 @@ func writeElement(sb *strings.Builder, el *UIElement, depth int) {
 
 	switch el.Tag {
 	case "title":
-		sb.WriteString(indent + "<h1>" + escHTML(el.Text) + "</h1>\n")
+		sb.WriteString(indent + "<h1 id='" + el.ElemID + "'>" + escHTML(el.Text) + "</h1>\n")
 	case "text":
-		sb.WriteString(indent + "<p class='text'>" + escHTML(el.Text) + "</p>\n")
+		sb.WriteString(indent + "<p class='text' id='" + el.ElemID + "'>" + escHTML(el.Text) + "</p>\n")
 	case "button":
 		cbID := el.CallbackID
 		if cbID != "" {
-			sb.WriteString(fmt.Sprintf(`%s<button onclick="chronosCallback('%s', this.textContent)">%s</button>`+"\n",
-				indent, cbID, escHTML(el.Text)))
+			sb.WriteString(fmt.Sprintf(`%s<button id='%s' onclick="chronosCallback('%s', this.textContent)">%s</button>`+"\n",
+				indent, el.ElemID, cbID, escHTML(el.Text)))
 		} else {
-			sb.WriteString(indent + "<button>" + escHTML(el.Text) + "</button>\n")
+			sb.WriteString(indent + "<button id='" + el.ElemID + "'>" + escHTML(el.Text) + "</button>\n")
 		}
 	case "input":
 		label := el.Attrs["label"]
@@ -245,8 +275,8 @@ func writeElement(sb *strings.Builder, el *UIElement, depth int) {
 		if val == "" {
 			val = "0"
 		}
-		sb.WriteString(fmt.Sprintf(`%s<div class="progress-bar"><div class="progress-fill" style="width:%s%%"></div></div>`+"\n",
-			indent, val))
+		sb.WriteString(fmt.Sprintf(`%s<div class="progress-bar" id='%s'><div class="progress-fill" style="width:%s%%"></div></div>`+"\n",
+			indent, el.ElemID, val))
 	case "image":
 		src := el.Attrs["src"]
 		sb.WriteString(fmt.Sprintf(`%s<img src="%s" alt="%s" />`+"\n", indent, src, escHTML(el.Text)))
@@ -297,10 +327,9 @@ func newUiModule() *object.Module {
 	env.Define("title", &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			if len(args) < 1 { return newError("ui.title 需要文本") }
-			uiState.Root = append(uiState.Root, &UIElement{
-				Tag: "title", Text: args[0].Inspect(),
-			})
-			return NIL
+			el := registerElement(&UIElement{Tag: "title", Text: args[0].Inspect()})
+			uiState.Root = append(uiState.Root, el)
+			return el
 		},
 	})
 
@@ -308,10 +337,9 @@ func newUiModule() *object.Module {
 	env.Define("text", &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			if len(args) < 1 { return newError("ui.text 需要文本") }
-			uiState.Root = append(uiState.Root, &UIElement{
-				Tag: "text", Text: args[0].Inspect(),
-			})
-			return NIL
+			el := registerElement(&UIElement{Tag: "text", Text: args[0].Inspect()})
+			uiState.Root = append(uiState.Root, el)
+			return el
 		},
 	})
 
@@ -326,8 +354,9 @@ func newUiModule() *object.Module {
 					el.CallbackID = registerCallback(fn)
 				}
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -348,8 +377,9 @@ func newUiModule() *object.Module {
 					el.CallbackID = registerCallback(fn)
 				}
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -369,8 +399,9 @@ func newUiModule() *object.Module {
 					el.CallbackID = registerCallback(fn)
 				}
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -393,8 +424,9 @@ func newUiModule() *object.Module {
 					el.CallbackID = registerCallback(fn)
 				}
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -421,8 +453,9 @@ func newUiModule() *object.Module {
 					el.CallbackID = registerCallback(fn)
 				}
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -439,8 +472,9 @@ func newUiModule() *object.Module {
 					}
 				}
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -454,8 +488,9 @@ func newUiModule() *object.Module {
 			if len(args) > 0 {
 				el.Attrs["value"] = args[0].Inspect()
 			}
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -465,8 +500,9 @@ func newUiModule() *object.Module {
 			el := &UIElement{Tag: "image", Attrs: map[string]string{}}
 			if len(args) > 0 { el.Attrs["src"] = args[0].Inspect() }
 			if len(args) > 1 { el.Text = args[1].Inspect() }
+			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
-			return NIL
+			return el
 		},
 	})
 
@@ -519,8 +555,3 @@ func newUiModule() *object.Module {
 	}
 }
 
-// UIElement 实现 Object 接口（用于 ui.row/ui.card 传入子元素）
-func (el *UIElement) Type() object.ObjectType { return "UI_ELEMENT" }
-func (el *UIElement) Inspect() string {
-	return "<ui " + el.Tag + ">"
-}

@@ -1570,6 +1570,20 @@ func evalMethodCallExpression(mce *ast.MethodCallExpression, env *object.Environ
 	}
 
 	switch o := obj.(type) {
+	case *UIElement:
+		// UI 元素方法：el.update("新文本")
+		switch mce.Method {
+		case "update", "set":
+			if len(args) < 1 {
+				return newError("%s.update 需要一个字符串", o.ElemID)
+			}
+			o.Update(args[0].Inspect())
+			return o
+		case "id":
+			return &object.String{Value: o.ElemID}
+		}
+		return newError("UI 元素不支持方法 %s", mce.Method)
+
 	case *FfiLib:
 		// FFI 库方法：lib.call("sqrt", 16.0) / lib.declare(...)
 		return ffiLibCall(o, mce.Method, args)

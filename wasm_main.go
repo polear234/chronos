@@ -37,15 +37,14 @@ func main() {
 	js.Global().Set("chronosRun", js.FuncOf(runJS))
 	js.Global().Set("chronosCheck", js.FuncOf(checkJS))
 
-	// UI 回调桥：JS 调 chronosUICallback(id, value) → 调 Chronospp 回调函数
+	// UI 回调桥：JS 调 chronosUICallback(id, value) → 执行回调并返回新 HTML
 	js.Global().Set("chronosUICallback", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if len(args) < 2 {
-			return nil
+			return ""
 		}
 		id := args[0].String()
 		value := args[1].String()
-		interpreter.InvokeUICallback(id, value)
-		return nil
+		return interpreter.InvokeUICallback(id, value)
 	}))
 
 	// 获取 UI HTML
