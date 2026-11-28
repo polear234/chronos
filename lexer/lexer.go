@@ -326,6 +326,37 @@ func (l *Lexer) skipMultiLineComment() {
 
 func (l *Lexer) readIdentifier() string {
 	position := l.position
+
+	// 特殊处理：operator+ / operator- / operator* 等运算符重载名
+	// 先读普通标识符，如果是 "operator" 且后面紧跟符号，把符号也吃掉
+	savedPos, savedRead, savedCh, savedLine, savedCol :=
+		l.position, l.readPosition, l.ch, l.line, l.column
+	for l.ch != 0 && (isLetter(l.ch) || isDigit(l.ch) || l.ch >= utf8.RuneSelf) {
+		l.readChar()
+	}
+	word := l.input[position:l.position]
+	if word == "operator" && l.ch != 0 && l.ch != ' ' && l.ch != '\t' &&
+		l.ch != '\n' && l.ch != '\r' && l.ch != '(' && l.ch != '{' {
+		// 吃掉运算符符号（可能两个字符，如 == <= >= !=）
+		opStart := l.position
+		l.readChar()
+		// 双字符运算符
+		if l.ch == '=' || l.ch == '&' || l.ch == '|' {
+			l.readChar()
+		}
+		// < > 可能是 <= >=
+		if l.position > opStart && (l.input[l.position-1] == '<' || l.input[l.position-1] == '>') && l.ch == '=' {
+			l.readChar()
+		}
+		return "operator" + l.input[opStart:l.position]
+	}
+	// 不是 operator，恢复并按普通方式重读
+	if word != "operator" {
+		l.position, l.readPosition, l.ch = savedPos, savedRead, savedCh
+		l.line, l.column = savedLine, savedCol
+	} else {
+		return word
+	}
 	for l.ch != 0 {
 		if isLetter(l.ch) || isDigit(l.ch) {
 			l.readChar()

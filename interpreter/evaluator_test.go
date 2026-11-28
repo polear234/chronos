@@ -1519,3 +1519,45 @@ v.x = 42
 getX(v)`
 	testIntegerObject(t, testEval(t, param), 42)
 }
+
+func TestOperatorOverload(t *testing.T) {
+	// 向量加法
+	add := `class Vec {
+    fn init(x, y) { this.x = x; this.y = y }
+    fn operator+(o) { return new Vec(this.x + o.x, this.y + o.y) }
+}
+let a = new Vec(1, 2)
+let b = new Vec(3, 4)
+let c = a + b
+c.x * 10 + c.y`
+	testIntegerObject(t, testEval(t, add), 46)
+
+	// 标量乘法
+	mul := `class N {
+    fn init(v) { this.v = v }
+    fn operator*(k) { return new N(this.v * k) }
+}
+let a = new N(5)
+(a * 3).v`
+	testIntegerObject(t, testEval(t, mul), 15)
+
+	// 比较运算符
+	cmp := `class N {
+    fn init(v) { this.v = v }
+    fn operator<(o) { return this.v < o.v }
+}
+let a = new N(1)
+let b = new N(2)
+if a < b { 1 } else { 0 }`
+	testIntegerObject(t, testEval(t, cmp), 1)
+
+	// 减法
+	sub := `class N {
+    fn init(v) { this.v = v }
+    fn operator-(o) { return new N(this.v - o.v) }
+}
+let a = new N(10)
+let b = new N(3)
+(a - b).v`
+	testIntegerObject(t, testEval(t, sub), 7)
+}

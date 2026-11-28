@@ -849,8 +849,49 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 	case operator == "!=":
 		return nativeBoolToBooleanObject(!objectsEqual(left, right))
 	default:
+		// 运算符重载：查左操作数实例的方法 operator<符号>
+		if result, ok := tryOperatorOverload(operator, left, right); ok {
+			return result
+		}
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
 	}
+}
+
+// tryOperatorOverload 尝试用实例的运算符方法处理二元运算
+// 约定：类里定义 fn operator+(other) { ... } 即可重载 +
+func tryOperatorOverload(operator string, left, right object.Object) (object.Object, bool) {
+	inst, ok := left.(*object.Instance)
+	if !ok {
+		return nil, false
+	}
+
+	// 运算符 → 方法名映射
+	methodName := "operator" + operator
+	method, _ := lookupMethod(inst.Class, methodName)
+	if method == nil {
+		return nil, false
+	}
+
+	// 调用方法，this 绑定到左操作数，参数是右操作数
+	extended := object.NewEnclosedEnvironment(method.Env)
+	extended.Define(thisKey, inst)
+	if len(method.Parameters) > 0 {
+		extended.Define(method.Parameters[0].Value, right)
+	}
+	result := unwrapReturnValue(Eval(method.Body, extended))
+	if isError(result) {
+		return result, true
+	}
+	// 返回类型检查
+	if method.ReturnType != "" && method.ReturnType != "void" && method.ReturnType != "any" {
+		converted := coerceToType(result, method.ReturnType)
+		if err := checkVarType(method.ReturnType, converted); err != nil {
+			return newError("%s 声明返回 %s，实际返回 %s",
+				methodName, method.ReturnType, result.Type()), true
+		}
+		return converted, true
+	}
+	return result, true
 }
 
 // logicalTruthy 用于 && / || 的真假判定：

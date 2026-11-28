@@ -400,6 +400,14 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		if p.peekTokenIs(token.ASTERISK) && p.peekToken.Line > p.curToken.Line {
 			return leftExp
 		}
+		// 换行隔开的 ( 或 [ 也不接续：避免
+		//   let a = new N(5)
+		//   (a).v
+		// 被解析成 new N(5)(a).v 的调用
+		if (p.peekTokenIs(token.LPAREN) || p.peekTokenIs(token.LBRACKET)) &&
+			p.peekToken.Line > p.curToken.Line {
+			return leftExp
+		}
 		// 同理：换行隔开的 & 也是新语句
 		if p.peekTokenIs(token.AMPERSAND) && p.peekToken.Line > p.curToken.Line {
 			return leftExp
