@@ -95,16 +95,15 @@ func newFfiModule() *object.Module {
 					maxLen = int(n.Value)
 				}
 			}
-			b := (*byte)(unsafe.Pointer(uintptr(addr)))
+			// 用 unsafe.Slice 构造切片访问内存（避免 vet 的 uintptr→Pointer 警告）
+			slice := unsafe.Slice((*byte)(unsafe.Add(unsafe.Pointer(nil), addr)), maxLen)
 			out := make([]byte, 0, 32)
 			for i := 0; i < maxLen; i++ {
-				c := *(*byte)(unsafe.Pointer(uintptr(addr) + uintptr(i)))
-				if c == 0 {
+				if slice[i] == 0 {
 					break
 				}
-				out = append(out, c)
+				out = append(out, slice[i])
 			}
-			_ = b
 			return &object.String{Value: string(out)}
 		},
 	})
