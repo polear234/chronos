@@ -33,6 +33,9 @@ var uiState = &UIState{
 	Callbacks: make(map[string]*object.Function),
 }
 
+// ResetUI 清空 UI 状态（供 WASM 每次执行前调用）
+func ResetUI() { resetUI() }
+
 // resetUI 清空 UI 状态
 func resetUI() {
 	uiState.Root = nil
@@ -69,6 +72,10 @@ func InvokeUICallback(id string, arg string) {
 
 // GetUIHTML 返回生成的 HTML（供 WebView/浏览器渲染）
 func GetUIHTML() string {
+	// 没有添加任何 UI 元素时返回空串，调用方据此判断是否要开界面
+	if len(uiState.Root) == 0 {
+		return ""
+	}
 	return generateHTML(uiState.Root)
 }
 

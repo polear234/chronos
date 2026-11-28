@@ -133,6 +133,9 @@ func checkJS(this js.Value, args []js.Value) any {
 }
 
 func execute(src string) (result runResult) {
+	// 每次执行前清空 UI 状态，避免多次运行元素累积（重复显示两套界面）
+	interpreter.ResetUI()
+
 	var buf bytes.Buffer
 	old := interpreter.SetOutput(&buf)
 	defer interpreter.SetOutput(old)
