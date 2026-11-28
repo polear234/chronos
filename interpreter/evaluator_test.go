@@ -1266,3 +1266,27 @@ func TestStartErrors(t *testing.T) {
 		t.Error("start(42) 应该报错")
 	}
 }
+
+func TestEndlAndChaining(t *testing.T) {
+	// endl 应该输出换行；链式 << 应该依次输出
+	env := object.NewEnvironment()
+	var buf strings.Builder
+	old := SetOutput(&buf)
+	defer SetOutput(old)
+
+	src := `prints << "a" << endl
+prints << "b"`
+	l := lexer.New(src)
+	p := parser.New(l)
+	prog := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parse: %v", p.Errors())
+	}
+	result := Eval(prog, env)
+	if isError(result) {
+		t.Fatalf("eval: %s", result.Inspect())
+	}
+	if buf.String() != "a\nb" {
+		t.Errorf("输出为 %q，期望 %q", buf.String(), "a\nb")
+	}
+}

@@ -636,19 +636,39 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 func evalStreamExpression(node *ast.InfixExpression, env *object.Environment) object.Object {
 	switch node.Operator {
 	case "<<":
-		// prints << x：左操作数必须是 prints / cout 标识符
-		leftIdent, ok := node.Left.(*ast.Identifier)
-		if !ok {
-			return newError("数据流输出要写成 prints << 值")
-		}
-		if leftIdent.Value != "prints" && leftIdent.Value != "cout" {
+		// prints << x           左操作数是 prints/cout 标识符
+		// prints << a << b      链式：左操作数本身是流表达式，先执行它
+		leftIdent, isIdent := node.Left.(*ast.Identifier)
+		if !isIdent {
+			if inner, ok := node.Left.(*ast.InfixExpression); ok && inner.Operator == "<<" {
+				// 先把左边那串输出掉
+				if r := evalStreamExpression(inner, env); isError(r) {
+					return r
+				}
+			} else {
+				return newError("数据流输出要写成 prints << 值")
+			}
+		} else if leftIdent.Value != "prints" && leftIdent.Value != "cout" {
 			return newError("数据流输出请用 prints << 值，收到 %s <<", leftIdent.Value)
+		}
+		// endl / flush：C++ 风格换行符，不求值成变量
+		if id, ok := node.Right.(*ast.Identifier); ok {
+			if id.Value == "endl" {
+				fmt.Fprint(outputWriter, "\n")
+				return NIL
+			}
+			if id.Value == "flush" {
+				if f, ok := outputWriter.(interface{ Sync() error }); ok {
+					f.Sync()
+				}
+				return NIL
+			}
 		}
 		val := Eval(node.Right, env)
 		if isError(val) {
 			return val
 		}
-		// C++ 的 cout << 不换行；要换行请用 print 或自己输出 "\n"
+		// C++ 的 cout << 不换行；要换行用 endl 或自己写 "\n"
 		fmt.Fprint(outputWriter, val.Inspect())
 		return NIL
 
