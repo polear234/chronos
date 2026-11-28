@@ -267,7 +267,7 @@ func ffiCallInt(sym uintptr, name string, args []object.Object) object.Object {
 		}
 	}
 
-	r1, r2, _ := purego.SyscallN(sym, rawArgs...)
+	r1, r2, _ := ffiSyscallN(sym, rawArgs...)
 	_ = r2
 	_ = name
 	return &object.Integer{Value: int64(r1)}
@@ -294,7 +294,7 @@ func ffiCallFloat(libHandle uintptr, sym uintptr, name string, retType string, a
 	if floatCount == 1 && intCount == 0 && retType != "int" {
 		// 单浮点参数，浮点返回
 		var f func(float64) float64
-		purego.RegisterLibFunc(&f, libHandle, name)
+		ffiRegisterLibFunc(&f, libHandle, name)
 		if f == nil {
 			return newError("ffi: %s 注册失败", name)
 		}
@@ -309,7 +309,7 @@ func ffiCallFloat(libHandle uintptr, sym uintptr, name string, retType string, a
 	if floatCount == 2 && intCount == 0 {
 		// 双浮点参数，浮点返回
 		var f func(float64, float64) float64
-		purego.RegisterLibFunc(&f, libHandle, name)
+		ffiRegisterLibFunc(&f, libHandle, name)
 		if f == nil {
 			return newError("ffi: %s 注册失败", name)
 		}
@@ -344,7 +344,7 @@ func ffiCallFloat(libHandle uintptr, sym uintptr, name string, retType string, a
 			rawArgs[i] = uintptr(v.Addr)
 		}
 	}
-	r1, _, _ := purego.SyscallN(sym, rawArgs...)
+	r1, _, _ := ffiSyscallN(sym, rawArgs...)
 	_ = name
 	_ = retType
 	return &object.Integer{Value: int64(r1)}
