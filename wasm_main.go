@@ -35,6 +35,22 @@ func main() {
 
 	js.Global().Set("chronosRun", js.FuncOf(runJS))
 	js.Global().Set("chronosCheck", js.FuncOf(checkJS))
+
+	// UI 回调桥：JS 调 chronosUICallback(id, value) → 调 Chronospp 回调函数
+	js.Global().Set("chronosUICallback", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if len(args) < 2 {
+			return nil
+		}
+		id := args[0].String()
+		value := args[1].String()
+		interpreter.InvokeUICallback(id, value)
+		return nil
+	}))
+
+	// 获取 UI HTML
+	js.Global().Set("chronosUIHtml", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return interpreter.GetUIHTML()
+	}))
 	// 虚拟文件系统：JS 侧维护 { "lib.chpp": "源码..." }，import 时从这里取
 	interpreter.SetModuleReader(func(path string) ([]byte, error) {
 		files := js.Global().Get("chronosFiles")

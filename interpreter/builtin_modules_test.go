@@ -220,3 +220,15 @@ func TestFfiModule(t *testing.T) {
 		}
 	}
 }
+
+func TestUiModule(t *testing.T) {
+	mod := lookupBuiltinModule("ui")
+	if mod == nil {
+		t.Fatal("ui 模块没有注册")
+	}
+	for _, fn := range []string{"title", "text", "button", "input", "list", "progress", "show", "reset"} {
+		if _, ok := mod.Exports[fn]; !ok {
+			t.Errorf("ui.%s 不存在", fn)
+		}
+	}
+}

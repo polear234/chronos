@@ -17,6 +17,7 @@ var builtinModules = map[string]func() *object.Module{
 	"requests": newRequestsModule,
 	"process":  newProcessModule,
 	"ffi":      newFfiModule,
+	"ui":       newUiModule,
 }
 
 func lookupBuiltinModule(name string) *object.Module {

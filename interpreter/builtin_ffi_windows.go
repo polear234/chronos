@@ -5,7 +5,6 @@ package interpreter
 import (
 	"fmt"
 	"syscall"
-	"unsafe"
 )
 
 // ffiDlopen 加载 DLL
@@ -34,7 +33,6 @@ func ffiRegisterLibFunc(fptr interface{}, handle uintptr, name string) {
 
 // ffiSyscallN 整数 ABI 调用（Windows x64 calling convention）
 func ffiSyscallN(fptr uintptr, args ...uintptr) (uintptr, uintptr, uintptr) {
-	var r1, r2 uintptr
 	// 简单调用：最多 4 个参数
 	switch len(args) {
 	case 0:
@@ -53,7 +51,4 @@ func ffiSyscallN(fptr uintptr, args ...uintptr) (uintptr, uintptr, uintptr) {
 		r, _, _ := syscall.SyscallN(fptr, args[:4]...)
 		return r, 0, 0
 	}
-	_ = r1
-	_ = r2
-	_ = unsafe.Sizeof(args)
 }
