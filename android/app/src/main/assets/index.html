@@ -553,36 +553,65 @@ function runCode(){
 
 // 显示全屏 UI（用 iframe 隔离）
 function showUiScreen(html) {
-  const frame = document.getElementById('uiFrame');
   document.getElementById('uiScreen').style.display = 'block';
-  // 注入 UI 回调桥
-  const bridge = `
-<script>
-function chronosCallback(id, value) {
-  parent.postMessage({type:'chronosUI', id:id, value:value}, '*');
+
+  const styleM = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const bodyM = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+
+  // 注入样式
+  if (styleM) {
+    let st = document.getElementById('chronos-ui-style');
+    if (!st) {
+      st = document.createElement('style');
+      st.id = 'chronos-ui-style';
+      document.head.appendChild(st);
+    }
+    st.textContent = styleM[1];
+  }
+
+  // 渲染内容
+  const root = document.getElementById('uiRoot');
+  root.innerHTML = bodyM ? bodyM[1] : html;
 }
-<\/script>`;
-  frame.srcdoc = html.replace('</head>', bridge + '</head>');
-}
+
+// 全局回调：局部更新，避免重建 DOM
+window.chronosCallback = function(id, value) {
+  if (typeof window.chronosUICallback !== 'function') return;
+  try {
+    const raw = window.chronosUICallback(id, String(value));
+    if (!raw) return;
+    const res = JSON.parse(raw);
+
+    if (res.updates && res.updates.length > 0) {
+      res.updates.forEach(function(u){
+        const el = document.getElementById(u.id);
+        if (!el) return;
+        // checkbox 更新勾选状态
+        if (el.type === 'checkbox') {
+          el.checked = (u.text === 'true' || u.text === '1');
+          return;
+        }
+        // slider 不覆盖用户拖动中的值
+        if (el.type === 'range') return;
+        // 其他元素更新文字
+        el.textContent = u.text;
+      });
+    }
+
+    if (res.fullHtml && res.fullHtml.length > 0) {
+      showUiScreen(res.fullHtml);
+    }
+  } catch (err) {
+    console.error('UI callback error:', err);
+  }
+};
 
 function closeUiScreen() {
   document.getElementById('uiScreen').style.display = 'none';
-  document.getElementById('uiFrame').srcdoc = '';
+  document.getElementById('uiRoot').innerHTML = '';
 }
 
-// UI 回调转发给 WASM，并把新 HTML 推回 iframe
-window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'chronosUI') {
-    try {
-      if (typeof chronosUICallback === 'function') {
-        const newHtml = chronosUICallback(e.data.id, e.data.value);
-        if (newHtml && newHtml.length > 0) {
-          showUiScreen(newHtml);   // 重绘
-        }
-      }
-    } catch (err) { console.error('UI callback error:', err); }
-  }
-});
+
 
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -855,7 +884,7 @@ function doBuildApk() {
 
 <!-- 全屏 UI 渲染区（脚本调用 ui.show() 时显示） -->
 <div id="uiScreen" style="display:none;position:fixed;inset:0;background:#fff;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-  <iframe id="uiFrame" style="width:100%;height:100%;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>
+  <div id="uiRoot" style="min-height:100%"></div>
   <div style="position:fixed;bottom:16px;right:16px;z-index:2001;">
     <button onclick="closeUiScreen()" style="width:48px;height:48px;border-radius:24px;border:none;background:#333;color:#fff;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">✕</button>
   </div>

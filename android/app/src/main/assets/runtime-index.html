@@ -39,7 +39,7 @@ html,body{height:100%;overflow:hidden;background:#1e1e1e;color:#ccc;
     <div class="txt">正在启动…</div>
   </div>
   <div id="console"></div>
-  <iframe id="uiFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+  <div id="uiRoot" style="display:none"></div>
   <div id="errorBar"></div>
 </div>
 
@@ -47,7 +47,7 @@ html,body{height:100%;overflow:hidden;background:#1e1e1e;color:#ccc;
 <script>
 const loadingEl = document.getElementById('loading');
 const consoleEl = document.getElementById('console');
-const uiFrameEl = document.getElementById('uiFrame');
+const uiRootEl = document.getElementById('uiRoot');
 const errorBarEl = document.getElementById('errorBar');
 
 function showError(msg){
@@ -64,37 +64,64 @@ function appendOut(text, cls){
   consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
-// UI 回调桥（iframe → WASM → 重绘）
-window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'chronosUI') {
-    if (typeof window.chronosUICallback === 'function') {
-      try {
-        // 回调执行后返回最新 HTML，前端重绘
-        const newHtml = window.chronosUICallback(e.data.id, e.data.value);
-        if (newHtml && newHtml.length > 0) {
-          renderUI(newHtml);
-        }
-      } catch (err) { console.error('callback error', err); }
-    }
-  }
-});
-
-// 渲染 UI（html 字符串 → iframe）
+// 渲染 UI：直接注入主文档（不用 iframe，避免 postMessage 时序问题）
 function renderUI(html){
   loadingEl.style.display = 'none';
   consoleEl.style.display = 'none';
-  uiFrameEl.style.display = 'block';
 
-  // 注入回调桥
-  const bridge = '<script>function chronosCallback(id,value){parent.postMessage({type:"chronosUI",id:id,value:value},"*");}<\/script>';
-  let doc = html;
-  if (doc.includes('</head>')) {
-    doc = doc.replace('</head>', bridge + '</head>');
-  } else {
-    doc = bridge + doc;
+  // 提取 <style> 和 <body> 内容
+  const styleM = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const bodyM  = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+
+  // 样式（追加到 head）
+  if (styleM) {
+    let st = document.getElementById('chronos-ui-style');
+    if (!st) {
+      st = document.createElement('style');
+      st.id = 'chronos-ui-style';
+      document.head.appendChild(st);
+    }
+    st.textContent = styleM[1];
   }
-  uiFrameEl.srcdoc = doc;
+
+  // 内容
+  uiRootEl.style.display = 'block';
+  uiRootEl.innerHTML = bodyM ? bodyM[1] : html;
 }
+
+// 全局回调：局部更新，避免重建 DOM 打断滑块/输入
+window.chronosCallback = function(id, value){
+  if (typeof window.chronosUICallback !== 'function') return;
+  try {
+    const raw = window.chronosUICallback(id, String(value));
+    if (!raw) return;
+    const res = JSON.parse(raw);
+
+    // 1. 局部更新：只改变化元素的文字
+    if (res.updates && res.updates.length > 0) {
+      res.updates.forEach(function(u){
+        const el = document.getElementById(u.id);
+        if (!el) return;
+        // checkbox 更新勾选状态
+        if (el.type === 'checkbox') {
+          el.checked = (u.text === 'true' || u.text === '1');
+          return;
+        }
+        // slider 不覆盖用户拖动中的值
+        if (el.type === 'range') return;
+        // 其他元素更新文字
+        el.textContent = u.text;
+      });
+    }
+
+    // 2. 整页重绘：只有 ui.reset() 或新增元素时
+    if (res.fullHtml && res.fullHtml.length > 0) {
+      renderUI(res.fullHtml);
+    }
+  } catch (err) {
+    console.error('UI callback error:', err);
+  }
+};
 
 // 读脚本内容
 function getScriptContent(){

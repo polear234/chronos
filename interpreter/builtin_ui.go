@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -18,8 +19,9 @@ type UIElement struct {
 	Children   []*UIElement
 	Callback   *object.Function   // 点击/输入时的回调
 	CallbackID string            // 回调注册 ID
-	ElemID     string            // 元素唯一 ID（用于 update）
+	ElemID      string            // 元素唯一 ID（用于 update）
 	callbackEnv *object.Environment  // 回调执行环境
+	dirty       bool               // 是否被 update 过（局部更新用）
 }
 
 func (el *UIElement) Type() object.ObjectType { return "UI_ELEMENT" }
@@ -30,6 +32,30 @@ func (el *UIElement) Inspect() string {
 // Update 更新元素文本（返回新值供链式使用）
 func (el *UIElement) Update(text string) {
 	el.Text = text
+	el.dirty = true
+}
+
+// UIUpdate 一个元素的局部更新
+type UIUpdate struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
+// CollectUpdates 收集并清空所有 dirty 元素（供前端局部更新）
+func CollectUpdates() []UIUpdate {
+	out := []UIUpdate{}
+	walkElements(uiState.Root, &out)
+	return out
+}
+
+func walkElements(els []*UIElement, out *[]UIUpdate) {
+	for _, el := range els {
+		if el.dirty {
+			*out = append(*out, UIUpdate{ID: el.ElemID, Text: el.Text})
+			el.dirty = false
+		}
+		walkElements(el.Children, out)
+	}
 }
 
 // UIState 全局 UI 状态
@@ -39,6 +65,7 @@ type UIState struct {
 	Callbacks map[string]*object.Function   // 回调注册表
 	Elements  map[string]*UIElement         // 元素 ID → 元素（update 用）
 	Seq       int                           // ID 计数器
+	needFullRedraw bool                     // 结构性变化时标记需要整页重绘
 }
 
 var uiState = &UIState{
@@ -55,6 +82,7 @@ func resetUI() {
 	uiState.Callbacks = make(map[string]*object.Function)
 	uiState.Elements = make(map[string]*UIElement)
 	uiState.Seq = 0
+	uiState.needFullRedraw = false
 }
 
 // registerElement 注册元素，分配 ID
@@ -73,14 +101,20 @@ func registerCallback(fn *object.Function) string {
 	return id
 }
 
+// InvokeUICallbackResult 回调结果
+type InvokeUICallbackResult struct {
+	Updates  []UIUpdate `json:"updates"`            // 局部更新
+	FullHTML string     `json:"fullHtml,omitempty"` // 整页重绘（ui.reset 时才用）
+}
+
 // InvokeUICallback 由外部（WASM/HTTP）调用回调
-// 执行完回调后返回最新的 HTML，供前端重绘
+// 返回 JSON：默认只给局部更新，避免重建 DOM 打断交互
 func InvokeUICallback(id string, arg string) string {
 	uiState.mu.Lock()
 	fn, ok := uiState.Callbacks[id]
 	uiState.mu.Unlock()
 	if !ok {
-		return GetUIHTML()
+		return "{}"
 	}
 
 	// 回调执行环境：优先用注册时的环境
@@ -94,10 +128,25 @@ func InvokeUICallback(id string, arg string) string {
 	} else {
 		extended.Define("value", &object.String{Value: arg})
 	}
+
+	// 回调开始前清标记：只有回调里真的新增元素才整页重绘
+	uiState.needFullRedraw = false
 	Eval(fn.Body, extended)
 
-	// 返回更新后的完整 HTML（前端据此重绘）
-	return GetUIHTML()
+	// 收集被 update 过的元素
+	updates := CollectUpdates()
+
+	// 只有元素集合发生结构性变化（调用过 ui.xxx 新增元素）时才整页重绘
+	result := InvokeUICallbackResult{Updates: updates}
+
+	// 检测：如果回调里调用了 ui.xxx() 或 ui.reset()，需要整页重绘
+	if uiState.needFullRedraw {
+		result.FullHTML = GetUIHTML()
+		uiState.needFullRedraw = false
+	}
+
+	b, _ := json.Marshal(result)
+	return string(b)
 }
 
 // GetUIHTML 返回生成的 HTML（供 WebView/浏览器渲染）
@@ -118,29 +167,34 @@ func generateHTML(elements []*UIElement) string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f5f5f5; color: #333; padding: 16px; max-width: 600px; margin: 0 auto; }
-h1 { font-size: 24px; margin-bottom: 16px; }
-p, .text { margin: 8px 0; line-height: 1.6; }
-button { background: #007AFF; color: #fff; border: none; padding: 12px 24px;
+.chronos-ui * { box-sizing: border-box; margin: 0; padding: 0; }
+.chronos-ui { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f5; color: #333; padding: 16px; max-width: 600px; margin: 0 auto;
+  min-height: 100vh; }
+.chronos-ui h1 { font-size: 24px; margin-bottom: 16px; }
+.chronos-ui p, .chronos-ui .text { margin: 8px 0; line-height: 1.6; }
+.chronos-ui button { background: #007AFF; color: #fff; border: none; padding: 12px 24px;
   border-radius: 8px; font-size: 16px; cursor: pointer; margin: 8px 0; }
-button:active { background: #0056CC; }
-input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;
-  font-size: 16px; margin: 8px 0; }
-ul { margin: 8px 0; padding-left: 24px; }
-li { margin: 4px 0; }
-.progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; margin: 8px 0; }
-.progress-fill { height: 100%; background: #007AFF; border-radius: 10px; transition: width 0.3s; }
-.row { display: flex; gap: 8px; margin: 8px 0; }
-.column { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
-.card { background: #fff; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-.checkbox-label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-.slider { width: 100%; margin: 8px 0; }
-label { font-weight: 500; margin: 4px 0; display: block; }
-img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+.chronos-ui button:active { background: #0056CC; }
+.chronos-ui input, .chronos-ui select { width: 100%; padding: 12px; border: 1px solid #ddd;
+  border-radius: 8px; font-size: 16px; margin: 8px 0; }
+.chronos-ui ul { margin: 8px 0; padding-left: 24px; }
+.chronos-ui li { margin: 4px 0; }
+.chronos-ui .progress-bar { width: 100%; height: 20px; background: #e0e0e0;
+  border-radius: 10px; margin: 8px 0; }
+.chronos-ui .progress-fill { height: 100%; background: #007AFF; border-radius: 10px;
+  transition: width 0.3s; }
+.chronos-ui .row { display: flex; gap: 8px; margin: 8px 0; }
+.chronos-ui .column { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.chronos-ui .card { background: #fff; border-radius: 12px; padding: 16px; margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.chronos-ui .checkbox-label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.chronos-ui .checkbox-label input { width: auto; margin: 0; }
+.chronos-ui .slider { width: 100%; margin: 8px 0; }
+.chronos-ui label { font-weight: 500; margin: 4px 0; display: block; }
+.chronos-ui img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
 </style>
-</head><body>
+</head><body><div class="chronos-ui">
 `)
 
 	for _, el := range elements {
@@ -169,7 +223,7 @@ function chronosCallback(id, value) {
   }).catch(function(){});
 }
 </script>
-</body></html>`)
+</div></body></html>`)
 
 	return sb.String()
 }
@@ -236,7 +290,7 @@ func writeElement(sb *strings.Builder, el *UIElement, depth int) {
 		if el.Attrs["checked"] == "true" {
 			checked = " checked"
 		}
-		sb.WriteString(fmt.Sprintf(`%s<div class="checkbox-label"><input type="checkbox"%s`, indent, checked))
+		sb.WriteString(fmt.Sprintf(`%s<div class="checkbox-label"><input type="checkbox" id='%s'%s`, indent, el.ElemID, checked))
 		if cbID != "" {
 			sb.WriteString(fmt.Sprintf(` onchange="chronosCallback('%s', this.checked ? '1' : '0')"`, cbID))
 		}
@@ -259,9 +313,10 @@ func writeElement(sb *strings.Builder, el *UIElement, depth int) {
 		if val == "" {
 			val = "50"
 		}
-		sb.WriteString(fmt.Sprintf(`%s<input type="range" class="slider" min="%s" max="%s" value="%s"`, indent, min, max, val))
+		sb.WriteString(fmt.Sprintf(`%s<input type="range" class="slider" id='%s' min="%s" max="%s" value="%s" step="1"`, indent, el.ElemID, min, max, val))
 		if cbID != "" {
-			sb.WriteString(fmt.Sprintf(` oninput="chronosCallback('%s', this.value)"`, cbID))
+			// oninput 实时显示数值，但节流避免频繁重绘；onchange 拖动结束才回调
+			sb.WriteString(fmt.Sprintf(` oninput="if(window.__chronosSliderTick)clearTimeout(window.__chronosSliderTick);window.__chronosSliderTick=setTimeout(function(){chronosCallback('%s', document.getElementById('%s').value)},120)"`, cbID, el.ElemID))
 		}
 		sb.WriteString(" />\n")
 	case "list":
@@ -319,6 +374,7 @@ func newUiModule() *object.Module {
 	env.Define("reset", &object.Builtin{
 		Fn: func(args ...object.Object) object.Object {
 			resetUI()
+			uiState.needFullRedraw = true
 			return NIL
 		},
 	})
@@ -329,6 +385,7 @@ func newUiModule() *object.Module {
 			if len(args) < 1 { return newError("ui.title 需要文本") }
 			el := registerElement(&UIElement{Tag: "title", Text: args[0].Inspect()})
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -339,6 +396,7 @@ func newUiModule() *object.Module {
 			if len(args) < 1 { return newError("ui.text 需要文本") }
 			el := registerElement(&UIElement{Tag: "text", Text: args[0].Inspect()})
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -356,6 +414,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -379,6 +438,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -401,6 +461,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -426,6 +487,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -455,6 +517,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -474,6 +537,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -490,6 +554,7 @@ func newUiModule() *object.Module {
 			}
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
@@ -502,6 +567,7 @@ func newUiModule() *object.Module {
 			if len(args) > 1 { el.Text = args[1].Inspect() }
 			registerElement(el)
 			uiState.Root = append(uiState.Root, el)
+			uiState.needFullRedraw = true
 			return el
 		},
 	})
