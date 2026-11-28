@@ -201,7 +201,8 @@ func (l *Lexer) NextToken() token.Token {
 			l.readChar()
 			return tok
 		}
-		tok := makeTok(token.ILLEGAL, string(l.ch))
+		// 单个 & = 取地址（C++ 风格指针）
+		tok := makeTok(token.AMPERSAND, "&")
 		l.readChar()
 		return tok
 	case '|':

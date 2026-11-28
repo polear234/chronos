@@ -164,6 +164,20 @@ func (p *Parser) parseTypedFunctionParameters() []*ast.Identifier {
 				Value:    p.curToken.Literal,
 				TypeHint: typeHint,
 			})
+		} else if p.curTokenIs(token.IDENT) && p.peekTokenIs(token.ASTERISK) && p.isTypeName(p.curToken.Literal) {
+			// int *ptr：指针参数
+			typeHint := p.curToken.Literal + "*"
+			p.nextToken() // 到 *
+			p.nextToken() // 到参数名
+			if !p.curTokenIs(token.IDENT) {
+				p.errors = append(p.errors, fmt.Sprintf("line %d: 指针参数后面要写变量名", p.curToken.Line))
+				return nil
+			}
+			idents = append(idents, &ast.Identifier{
+				Token:    p.curToken,
+				Value:    p.curToken.Literal,
+				TypeHint: typeHint,
+			})
 		} else if p.curTokenIs(token.IDENT) {
 			idents = append(idents, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		} else {
@@ -260,6 +274,18 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
+// isDerefAssign 判断当前位置是否是 "*变量 = " 形式的解引用赋值
+// 用于区分语句开头的 * 是解引用还是乘法
+func (p *Parser) isDerefAssign() bool {
+	if !p.curTokenIs(token.ASTERISK) {
+		return false
+	}
+	// 需要看后面两个 token：IDENT 和 ASSIGN
+	// 由于 parser 只有单 token 前瞻，这里用保守策略：
+	// 只要 * 后面紧跟 IDENT，就当作解引用（乘法通常左边有操作数）
+	return p.peekTokenIs(token.IDENT)
+}
+
 func (p *Parser) consumeSemicolon() {
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
@@ -352,7 +378,21 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	}
 	leftExp := prefix()
 
+	// &x 取地址只取一个标识符，后面即使是 * 也不再接（避免 "&x\n*p" 变成乘法）
+	if px, ok := leftExp.(*ast.PrefixExpression); ok && px.Operator == "&" {
+		return leftExp
+	}
+
 	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		// 换行隔开的 * 当作新语句的开头（解引用），不是乘法。
+		// 这样 "print(x)\n*p = 1" 不会被解析成 "print(x) * p = 1"。
+		if p.peekTokenIs(token.ASTERISK) && p.peekToken.Line > p.curToken.Line {
+			return leftExp
+		}
+		// 同理：换行隔开的 & 也是新语句
+		if p.peekTokenIs(token.AMPERSAND) && p.peekToken.Line > p.curToken.Line {
+			return leftExp
+		}
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
@@ -798,6 +838,50 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 //   prints << x     输出
 //   inputs >> name  读入
 // 两者都按中缀表达式处理，求值时按左操作数决定方向。
+// parsePointerExpression 解析 &x（取地址）
+// 注意：这里只吃一个标识符就返回，不参与后续中缀运算，
+// 否则 "&x\n*p = 1" 会被误解析成 "(&x) * p"。
+func (p *Parser) parsePointerExpression() ast.Expression {
+	tok := p.curToken
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	// 手动推进到下一个 token，让外层看到的是 &x 之后的内容
+	// 这样 "&x" 和后面的 "*p" 不会被连成乘法
+	return &ast.PrefixExpression{
+		Token:    tok,
+		Operator: "&",
+		Right:    &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+	}
+}
+
+// parseDerefExpression 解析 *p（解引用）
+func (p *Parser) parseDerefExpression() ast.Expression {
+	tok := p.curToken
+	prec := PREFIX
+	p.nextToken()
+	right := p.parseExpression(prec)
+	return &ast.PrefixExpression{
+		Token:    tok,
+		Operator: "*",
+		Right:    right,
+	}
+}
+
+// parseArrowExpression 解析 p->field（指针成员访问）
+func (p *Parser) parseArrowExpression(left ast.Expression) ast.Expression {
+	exp := &ast.InfixExpression{
+		Token:    p.curToken,
+		Left:     left,
+		Operator: "->",
+	}
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	exp.Right = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	return exp
+}
+
 func (p *Parser) parseStreamExpression(left ast.Expression) ast.Expression {
 	exp := &ast.InfixExpression{
 		Token:    p.curToken,
@@ -1051,6 +1135,8 @@ func (p *Parser) registerPrefixFns() {
 		token.NOT:      p.parsePrefixExpression,
 		token.NOT_KW:   p.parsePrefixExpression,
 		token.MINUS:    p.parsePrefixExpression,
+		token.AMPERSAND: p.parsePointerExpression,
+		token.ASTERISK:  p.parseDerefExpression,
 		token.LPAREN:   p.parseGroupedExpression,
 		token.IF:       p.parseIfExpression,
 		token.ELIF:     p.parseIfExpression,
@@ -1072,6 +1158,7 @@ func (p *Parser) registerInfixFns() {
 		token.PLUS:         p.parseInfixExpression,
 		token.MINUS:        p.parseInfixExpression,
 		token.ASTERISK:     p.parseInfixExpression,
+		token.PTR_ARROW:    p.parseArrowExpression,
 		token.SLASH:        p.parseInfixExpression,
 		token.MOD:          p.parseInfixExpression,
 		token.POW:          p.parseInfixExpression,

@@ -1333,3 +1333,50 @@ pass(42)`, 42},
 		testIntegerObject(t, testEval(t, tt.input), tt.want)
 	}
 }
+
+func TestPointer(t *testing.T) {
+	// 基础：取地址、解引用
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{`let x = 42
+let p = &x
+*p`, 42},
+		{`let x = 1
+let p = &x
+*p = 100
+x`, 100},
+		// 通过函数修改
+		{`int inc(int *p) { *p = *p + 1; return *p }
+let n = 10
+inc(&n)
+n`, 11},
+		// 多个指针指向同一变量
+		{`let x = 5
+let p = &x
+let q = &x
+*p = 10
+*q = 20
+x`, 20},
+	}
+	for _, tt := range tests {
+		testIntegerObject(t, testEval(t, tt.input), tt.expected)
+	}
+}
+
+func TestPointerErrors(t *testing.T) {
+	// 对非指针解引用
+	if r := testEval(t, `*42`); !isError(r) {
+		t.Error("*42 应该报错")
+	}
+	// 对未定义变量取地址
+	if r := testEval(t, `&notdefined`); !isError(r) {
+		t.Error("&notdefined 应该报错")
+	}
+	// 指针参数类型不符
+	if r := testEval(t, `int f(int *p) { return *p }
+f(42)`); !isError(r) {
+		t.Error("传非指针给指针参数应该报错")
+	}
+}

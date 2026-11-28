@@ -94,6 +94,33 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.NilLiteral:
 		return NIL
 	case *ast.PrefixExpression:
+		// &x：取地址，右侧必须是变量名（不求值）
+		if node.Operator == "&" {
+			ident, ok := node.Right.(*ast.Identifier)
+			if !ok {
+				return newError("取地址要写成 &变量名")
+			}
+			if _, defined := env.Get(ident.Value); !defined {
+				return newError("变量 %s 还没定义，不能取地址", ident.Value)
+			}
+			return &object.Pointer{Env: env, Name: ident.Value}
+		}
+		// *p：解引用
+		if node.Operator == "*" {
+			val := Eval(node.Right, env)
+			if isError(val) {
+				return val
+			}
+			ptr, ok := val.(*object.Pointer)
+			if !ok {
+				return newError("* 只能用于指针，收到 %s", val.Type())
+			}
+			target, ok := ptr.Deref()
+			if !ok {
+				return newError("指针指向的变量 %s 已不存在", ptr.Name)
+			}
+			return target
+		}
 		right := Eval(node.Right, env)
 		if isError(right) {
 			return right
@@ -1082,6 +1109,39 @@ func evalAssignTarget(left ast.Expression, env *object.Environment, newVals ...o
 	}
 
 	switch l := left.(type) {
+	case *ast.PrefixExpression:
+		// *p = 值：通过指针写
+		if l.Operator == "*" {
+			ptrVal := Eval(l.Right, env)
+			if isError(ptrVal) {
+				return ptrVal
+			}
+			ptr, ok := ptrVal.(*object.Pointer)
+			if !ok {
+				return newError("* 左边只能是指针，收到 %s", ptrVal.Type())
+			}
+			if !assigning {
+				// 读取
+				target, ok := ptr.Deref()
+				if !ok {
+					return newError("指针指向的变量 %s 已不存在", ptr.Name)
+				}
+				return target
+			}
+			// 写入：做类型检查
+			if varType := ptr.Env.GetVarType(ptr.Name); varType != "" {
+				newVal = coerceToType(newVal, varType)
+				if err := checkVarType(varType, newVal); err != nil {
+					return err
+				}
+			}
+			if result := ptr.Env.Set(ptr.Name, newVal); isError(result) {
+				return result
+			}
+			return newVal
+		}
+		return newError("不支持对 %s 赋值", l.Operator)
+
 	case *ast.Identifier:
 		if assigning {
 			// 类型校验

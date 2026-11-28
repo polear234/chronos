@@ -33,6 +33,10 @@ const (
 	SHL = "<<"
 	SHR = ">>"
 
+	// 指针
+	AMPERSAND = "&"   // 取地址
+	PTR_ARROW = "->"  // 指针成员访问
+
 	AND = "&&"
 	OR  = "||"
 	NOT = "!"

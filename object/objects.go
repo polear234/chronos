@@ -187,6 +187,26 @@ type Module struct {
 func (m *Module) Type() ObjectType { return MODULE_OBJ }
 func (m *Module) Inspect() string  { return "<module " + m.Name + ">" }
 
+// Pointer 指针对象：指向某个变量（按名字引用），支持 *p 读写
+type Pointer struct {
+	Env  *Environment // 目标变量所在的作用域
+	Name string       // 目标变量名
+}
+
+func (p *Pointer) Type() ObjectType { return POINTER_OBJ }
+func (p *Pointer) Inspect() string  { return "<pointer to " + p.Name + ">" }
+
+// Deref 取指针指向的值
+func (p *Pointer) Deref() (Object, bool) {
+	return p.Env.Get(p.Name)
+}
+
+// Assign 通过指针写值
+func (p *Pointer) Assign(val Object) bool {
+	p.Env.Set(p.Name, val)
+	return true
+}
+
 // Break 循环中断信号
 type Break struct{}
 
