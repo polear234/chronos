@@ -153,6 +153,9 @@ type Class struct {
 	SuperClass *Class
 	Methods    map[string]*Function
 	Properties map[string]Object
+	TypeParams []string          // 泛型参数名，如 ["T", "U"]
+	TypeArgs   []string          // 实例化时的具体类型，如 ["int"]
+	FieldTypes map[string]string // 字段类型约束（泛型特化时推断）
 }
 
 func (c *Class) Type() ObjectType { return CLASS_OBJ }
@@ -160,6 +163,7 @@ func (c *Class) Inspect() string  { return "<class " + c.Name + ">" }
 
 // Instance 实例对象
 type Instance struct {
+	FieldTypes map[string]string   // 字段类型约束（泛型特化用）
 	Class  *Class
 	Fields map[string]Object
 }

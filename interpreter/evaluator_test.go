@@ -1561,3 +1561,61 @@ let b = new N(3)
 (a - b).v`
 	testIntegerObject(t, testEval(t, sub), 7)
 }
+
+func TestGenerics(t *testing.T) {
+	// 基础泛型
+	basic := `class Box<T> {
+    fn init(T v) { this.v = v }
+    T get() { return this.v }
+}
+let a = new Box<int>(42)
+a.get()`
+	testIntegerObject(t, testEval(t, basic), 42)
+
+	// 不同类型实例化
+	multi := `class Box<T> {
+    fn init(T v) { this.v = v }
+    T get() { return this.v }
+}
+let s = new Box<string>("hi")
+s.get()`
+	if r := testEval(t, multi); r.Inspect() != "hi" {
+		t.Errorf("期望 hi，得到 %s", r.Inspect())
+	}
+
+	// 多个类型参数
+	pair := `class Pair<A, B> {
+    fn init(A a, B b) { this.a = a; this.b = b }
+    A first() { return this.a }
+    B second() { return this.b }
+}
+let p = new Pair<int, string>(1, "one")
+p.first() * 10`
+	testIntegerObject(t, testEval(t, pair), 10)
+
+	// 类型错误
+	bad := `class Box<T> {
+    fn init(T v) { this.v = v }
+}
+new Box<int>("not int")`
+	if r := testEval(t, bad); !isError(r) {
+		t.Error("类型不匹配应该报错")
+	}
+
+	// 缺少类型参数
+	missing := `class Box<T> {
+    fn init(T v) { this.v = v }
+}
+new Box(1)`
+	if r := testEval(t, missing); !isError(r) {
+		t.Error("泛型类缺类型参数应该报错")
+	}
+}
+
+func TestArrayConcat(t *testing.T) {
+	src := `let a = [1, 2]
+let b = [3, 4]
+let c = a + b
+len(c)`
+	testIntegerObject(t, testEval(t, src), 4)
+}

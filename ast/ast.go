@@ -242,7 +242,8 @@ type FunctionLiteral struct {
 	Parameters []*Identifier
 	Body       *BlockStatement
 	Name       string // 用于递归调用
-	ReturnType string // C++ 风格返回类型：int add(...) 里的 "int"
+	ReturnType string   // C++ 风格返回类型：int add(...) 里的 "int"
+	TypeParams []string // 泛型类型参数：fn max<T>(...) 里的 ["T"]
 }
 
 func (fl *FunctionLiteral) expressionNode()      {}
@@ -512,6 +513,7 @@ type ClassLiteral struct {
 	Properties  map[string]Expression
 	IsStruct    bool            // struct 声明的字段（不检查方法）
 	StructFields []string       // struct 的字段名列表
+	TypeParams  []string        // 泛型类型参数：class Box<T> 里的 ["T"]
 }
 
 // InterfaceLiteral 接口声明：interface Name { fn method(args) }
@@ -569,9 +571,10 @@ func (cl *ClassLiteral) String() string {
 
 // NewExpression new 表达式
 type NewExpression struct {
-	Token      token.Token
-	Class      Expression
-	Arguments  []Expression
+	Token       token.Token
+	Class       Expression
+	Arguments   []Expression
+	TypeArgs    []string   // 泛型实参：new Box<int> 里的 ["int"]
 }
 
 func (ne *NewExpression) expressionNode()      {}

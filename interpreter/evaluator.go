@@ -846,6 +846,8 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return nativeBoolToBooleanObject(logicalTruthy(left) || logicalTruthy(right))
 	case operator == "==":
 		return nativeBoolToBooleanObject(objectsEqual(left, right))
+	case left.Type() == object.ARRAY_OBJ && right.Type() == object.ARRAY_OBJ:
+		return evalArrayInfixExpression(operator, left, right)
 	case operator == "!=":
 		return nativeBoolToBooleanObject(!objectsEqual(left, right))
 	default:
@@ -892,6 +894,20 @@ func tryOperatorOverload(operator string, left, right object.Object) (object.Obj
 		return converted, true
 	}
 	return result, true
+}
+
+// evalArrayInfixExpression 数组的 + 运算（拼接）
+func evalArrayInfixExpression(operator string, left, right object.Object) object.Object {
+	l := left.(*object.Array)
+	r := right.(*object.Array)
+	switch operator {
+	case "+":
+		out := make([]object.Object, 0, len(l.Elements)+len(r.Elements))
+		out = append(out, l.Elements...)
+		out = append(out, r.Elements...)
+		return &object.Array{Elements: out}
+	}
+	return newError("数组不支持 %s 运算", operator)
 }
 
 // logicalTruthy 用于 && / || 的真假判定：
@@ -1258,6 +1274,15 @@ func evalAssignTarget(left ast.Expression, env *object.Environment, newVals ...o
 			return newError("cannot access property of %s", obj.Type())
 		}
 		if assigning {
+			// 泛型特化后的字段类型检查
+			if ft := inst.FieldTypes[l.Property]; ft != "" && ft != "any" {
+				converted := coerceToType(newVal, ft)
+				if err := checkVarType(ft, converted); err != nil {
+					return newError("字段 %s 声明为 %s，收到 %s",
+						l.Property, ft, newVal.Type())
+				}
+				newVal = converted
+			}
 			inst.Fields[l.Property] = newVal
 			return newVal
 		}
@@ -1619,6 +1644,7 @@ func evalClassLiteral(cl *ast.ClassLiteral, env *object.Environment) object.Obje
 		SuperClass: superClass,
 		Methods:    methods,
 		Properties: properties,
+		TypeParams: cl.TypeParams,
 	}
 
 	// 检查 implements 的接口是否都实现了
@@ -1689,6 +1715,30 @@ func evalNewExpression(ne *ast.NewExpression, env *object.Environment) object.Ob
 	if !ok {
 		return newError("new requires a class, got %s", classObj.Type())
 	}
+
+	// 泛型实例化：new Box<int>(5)
+	if len(class.TypeParams) > 0 {
+		if len(ne.TypeArgs) == 0 {
+			return newError("泛型类 %s 需要类型参数，写成 new %s<%s>(...)",
+				class.Name, class.Name, strings.Join(class.TypeParams, ", "))
+		}
+		if len(ne.TypeArgs) != len(class.TypeParams) {
+			return newError("%s 需要 %d 个类型参数，收到 %d 个",
+				class.Name, len(class.TypeParams), len(ne.TypeArgs))
+		}
+		// 生成特化后的类
+		specialized := specializeClass(class, ne.TypeArgs)
+		args := evalExpressions(ne.Arguments, env)
+		if len(args) == 1 && isError(args[0]) {
+			return args[0]
+		}
+		return instantiate(specialized, args)
+	}
+
+	if len(ne.TypeArgs) > 0 {
+		return newError("%s 不是泛型类，不能带类型参数", class.Name)
+	}
+
 	args := evalExpressions(ne.Arguments, env)
 	if len(args) == 1 && isError(args[0]) {
 		return args[0]
@@ -1696,8 +1746,86 @@ func evalNewExpression(ne *ast.NewExpression, env *object.Environment) object.Ob
 	return instantiate(class, args)
 }
 
+// specializeClass 把泛型类按类型实参特化：T → int
+// 返回一个浅拷贝，参数类型和字段类型里的 T 都被替换
+func specializeClass(class *object.Class, typeArgs []string) *object.Class {
+	// 建替换表：T → int
+	subst := make(map[string]string, len(class.TypeParams))
+	for i, tp := range class.TypeParams {
+		if i < len(typeArgs) {
+			subst[tp] = typeArgs[i]
+		}
+	}
+
+	replace := func(typeName string) string {
+		if v, ok := subst[typeName]; ok {
+			return v
+		}
+		// 处理 T* 这种指针类型
+		if strings.HasSuffix(typeName, "*") {
+			base := strings.TrimSuffix(typeName, "*")
+			if v, ok := subst[base]; ok {
+				return v + "*"
+			}
+		}
+		return typeName
+	}
+
+	// 复制方法，替换参数类型和返回类型
+	methods := make(map[string]*object.Function, len(class.Methods))
+	for name, m := range class.Methods {
+		params := make([]*ast.Identifier, len(m.Parameters))
+		for i, p := range m.Parameters {
+			cp := *p
+			if cp.TypeHint != "" {
+				cp.TypeHint = replace(cp.TypeHint)
+			}
+			params[i] = &cp
+		}
+		methods[name] = &object.Function{
+			Parameters: params,
+			Body:       m.Body,
+			Env:        m.Env,
+			Name:       m.Name,
+			ReturnType: replace(m.ReturnType),
+		}
+	}
+
+	// 从 init 方法的参数类型推断字段类型：
+	// fn init(v: T) 里的 T 特化成 int，则 this.v 也应该是 int
+	fieldTypes := make(map[string]string)
+	if initFn, ok := class.Methods["init"]; ok {
+		for _, p := range initFn.Parameters {
+			if p.TypeHint == "" {
+				continue
+			}
+			// 只记录能替换成具体类型的
+			replaced := replace(p.TypeHint)
+			if replaced != p.TypeHint {
+				fieldTypes[p.Value] = replaced
+			}
+		}
+	}
+
+	// 名字带上类型实参，方便调试
+	specName := class.Name + "<" + strings.Join(typeArgs, ", ") + ">"
+	return &object.Class{
+		Name:       specName,
+		SuperClass: class.SuperClass,
+		Methods:    methods,
+		Properties: class.Properties,
+		TypeParams: class.TypeParams,
+		TypeArgs:   typeArgs,
+		FieldTypes: fieldTypes,
+	}
+}
+
 func instantiate(class *object.Class, args []object.Object) object.Object {
-	instance := &object.Instance{Class: class, Fields: make(map[string]object.Object)}
+	instance := &object.Instance{
+		Class:      class,
+		Fields:     make(map[string]object.Object),
+		FieldTypes: class.FieldTypes,
+	}
 	for name, val := range class.Properties {
 		instance.Fields[name] = val
 	}

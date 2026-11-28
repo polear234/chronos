@@ -801,6 +801,27 @@ func (p *Parser) parseStructLiteral() ast.Expression {
 	cl.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.userTypes[cl.Name.Value] = true   // 登记为可用类型名
 
+	// 泛型参数：struct Pair<T> { T first; T second }
+	if p.peekTokenIs(token.LT) {
+		p.nextToken()
+		for {
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			cl.TypeParams = append(cl.TypeParams, p.curToken.Literal)
+			// 登记为类型名，让 T first 能被识别
+			p.userTypes[p.curToken.Literal] = true
+			if p.peekTokenIs(token.COMMA) {
+				p.nextToken()
+				continue
+			}
+			break
+		}
+		if !p.expectPeek(token.GT) {
+			return nil
+		}
+	}
+
 	if !p.expectPeek(token.LBRACE) {
 		return nil
 	}
@@ -882,6 +903,26 @@ func (p *Parser) parseClassLiteral() ast.Expression {
 	cl.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.userTypes[cl.Name.Value] = true   // 登记为可用类型名
 
+	// 泛型参数：class Box<T> / class Pair<T, U>
+	if p.peekTokenIs(token.LT) {
+		p.nextToken() // 到 <
+		for {
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			cl.TypeParams = append(cl.TypeParams, p.curToken.Literal)
+			p.userTypes[p.curToken.Literal] = true  // T 可作为类型名
+			if p.peekTokenIs(token.COMMA) {
+				p.nextToken()
+				continue
+			}
+			break
+		}
+		if !p.expectPeek(token.GT) {
+			return nil
+		}
+	}
+
 	// extends 处理：extends 目前不是关键字，按 IDENT 处理
 	if p.peekTokenIs(token.IDENT) && p.peekToken.Literal == "extends" {
 		p.nextToken() // 消费 extends
@@ -921,6 +962,19 @@ func (p *Parser) parseClassLiteral() ast.Expression {
 			case p.peekTokenIs(token.LPAREN):
 				// 方法定义：name(params) {...}
 				cl.Methods[name] = p.parseMethod(name, nameTok)
+			case p.isTypeName(name) && p.peekTokenIs(token.IDENT):
+				// C++ 风格带返回类型的方法：int get() / T get()
+				retType := name
+				p.nextToken() // 到方法名
+				methodName := p.curToken.Literal
+				methodTok := p.curToken
+				if p.peekTokenIs(token.LPAREN) {
+					m := p.parseMethod(methodName, methodTok)
+					if m != nil {
+						m.ReturnType = retType
+						cl.Methods[methodName] = m
+					}
+				}
 			case p.peekTokenIs(token.ASSIGN):
 				// 属性定义：name = value
 				p.nextToken()
@@ -939,7 +993,8 @@ func (p *Parser) parseMethod(name string, nameTok token.Token) *ast.FunctionLite
 	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
-	lit.Parameters = p.parseFunctionParameters()
+	// 参数可能带类型标注：set(T x) / add(int a, int b)
+	lit.Parameters = p.parseTypedFunctionParameters()
 	if !p.expectPeek(token.LBRACE) {
 		return nil
 	}
@@ -950,7 +1005,33 @@ func (p *Parser) parseMethod(name string, nameTok token.Token) *ast.FunctionLite
 func (p *Parser) parseNewExpression() ast.Expression {
 	exp := &ast.NewExpression{Token: p.curToken}
 	p.nextToken()
-	exp.Class = p.parseExpression(CALL)
+
+	// 先读类名（可能是 IDENT）
+	if p.curTokenIs(token.IDENT) {
+		exp.Class = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	} else {
+		exp.Class = p.parseExpression(CALL)
+	}
+
+	// 泛型实参：new Box<int>(5)
+	if p.peekTokenIs(token.LT) {
+		p.nextToken() // 到 <
+		for {
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			exp.TypeArgs = append(exp.TypeArgs, p.curToken.Literal)
+			if p.peekTokenIs(token.COMMA) {
+				p.nextToken()
+				continue
+			}
+			break
+		}
+		if !p.expectPeek(token.GT) {
+			return nil
+		}
+	}
+
 	// 若后面紧跟 '('，解析构造参数
 	if p.peekTokenIs(token.LPAREN) {
 		p.nextToken() // 消费 (
