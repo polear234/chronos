@@ -9,17 +9,19 @@
   <?ifndef arch ?>
   <?define arch = "amd64" ?>
   <?endif?>
+  <!-- Codepage="936"（GBK）：完成页有中文，默认 1252 存不下会报 LGHT0311 -->
   <Product Id="*"
            Name="Chronospp"
            Language="1033"
+           Codepage="936"
            Version="$(var.version)"
            Manufacturer="Chronospp Contributors"
            UpgradeCode="8F3A6C2E-4B1D-4E7A-9C5F-2D8B7A1E6F03">
 
     <?if $(var.arch) = "arm64" ?>
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="arm64" />
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="arm64" Codepage="936" />
     <?else?>
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" Codepage="936" />
     <?endif?>
     <MajorUpgrade DowngradeErrorMessage="A newer version of Chronospp is already installed." />
     <MediaTemplate EmbedCab="yes" />
