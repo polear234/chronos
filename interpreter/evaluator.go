@@ -1542,6 +1542,10 @@ func evalMethodCallExpression(mce *ast.MethodCallExpression, env *object.Environ
 	}
 
 	switch o := obj.(type) {
+	case *FfiLib:
+		// FFI 库方法：lib.call("sqrt", 16.0) / lib.declare(...)
+		return ffiLibCall(o, mce.Method, args)
+
 	case *object.Instance:
 		if m, defClass := lookupMethod(o.Class, mce.Method); m != nil {
 			return applyFunction(&object.Method{Fn: m, Receiver: o, Class: defClass}, args, env)

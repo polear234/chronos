@@ -17,6 +17,7 @@ var builtinModules = map[string]func() *object.Module{
 	"math":     newMathModule,
 	"requests": newRequestsModule,
 	"process":  newProcessModule,
+	"ffi":      newFfiModule,
 }
 
 // lookupBuiltinModule 按名字返回内置模块，没有则返回 nil

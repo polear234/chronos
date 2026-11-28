@@ -208,3 +208,15 @@ func TestBinaryReadWrite(t *testing.T) {
 		}
 	}
 }
+
+func TestFfiModule(t *testing.T) {
+	mod := lookupBuiltinModule("ffi")
+	if mod == nil {
+		t.Fatal("ffi 模块没有注册")
+	}
+	for _, fn := range []string{"load", "ptr", "str", "alloc"} {
+		if _, ok := mod.Exports[fn]; !ok {
+			t.Errorf("ffi.%s 不存在", fn)
+		}
+	}
+}
