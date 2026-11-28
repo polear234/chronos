@@ -203,7 +203,7 @@ chpp run hello.chpp
 | 🎯 **控制流** | `if`/`elif`/`else` · `while` · `for-in` · `break`/`continue` · 循环 `else` |
 | 🧩 **模式匹配** | `match` / `case` / `default` |
 | 🛡️ **错误处理** | `try` / `catch` / `finally` / `throw` |
-| 📦 **模块系统** | `import` / `as` · 循环引用检测 · 内置 `os`/`math`/`requests` |
+| 📦 **模块系统** | `import` / `as` · 循环引用检测 · 内置 `os`/`math`/`requests` |\n| 🔗 **FFI** | 调用 `.so`/`.dll`/`.dylib` · `ffi.load`/`lib.call` · 纯 Go 零 cgo |
 | 📚 **包管理** | `.chm` 包 · `chpp install/search/info/list/freeze/pack` · 依赖与版本约束 |
 | 🌏 **国际化** | Unicode 标识符：中文 / 日文 / 俄文均可命名 |
 | 🖥️ **工具链** | `chpp serve` 静态服务器 · `chpp upgrade` 自更新 · **Chronospp Studio** 编辑器 |
@@ -270,6 +270,48 @@ class Dog extends Animal {
 let d = new Dog("Buddy")
 print(d.speak())   // "Buddy barks!"
 ```
+
+### FFI 调用动态库
+
+直接调用 `.so` / `.dll` / `.dylib` 中的 C 函数，**不需要 cgo、不需要编译器**。
+
+```chronos
+import "ffi"
+
+// 加载共享库
+let libm = ffi.load("libm.so.6")
+
+// 整数函数（自动检测 ABI）
+let libc = ffi.load("libc.so.6")
+print(libc.call("strlen", "hello"))      // 5
+
+// 浮点函数（声明签名后调用）
+libm.declare("sqrt", "float", "float")
+print(libm.call("sqrt", 16.0))           // 4.0
+
+libm.declare("pow", "float", "float", "float")
+print(libm.call("pow", 2.0, 10.0))       // 1024.0
+```
+
+**Windows 上调用 DLL**：
+
+```chronos
+import "ffi"
+let user32 = ffi.load("user32.dll")
+// user32.call("MessageBoxA", 0, ffi.ptr("Hello"), ffi.ptr("FFI"), 0)
+```
+
+API：
+| 函数 | 说明 |
+|------|------|
+| `ffi.load(path)` | 加载动态库 |
+| `lib.call(name, args...)` | 调用函数（自动检测 int/float ABI） |
+| `lib.declare(name, ret, args...)` | 声明函数签名 |
+| `ffi.ptr(str)` | 字符串 → C 指针 |
+| `ffi.str(ptr)` | C 指针 → 字符串 |
+| `ffi.alloc(n)` | 分配 n 字节内存 |
+
+> 基于 purego（纯 Go FFI，运行时汇编 trampoline），零 cgo 依赖，单文件编译。
 
 ### 时间旅行
 

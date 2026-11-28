@@ -9,8 +9,6 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/ebitengine/purego"
-
 	"chronospp/object"
 )
 
@@ -34,6 +32,9 @@ type FfiPtr struct {
 func (p *FfiPtr) Type() object.ObjectType { return "FFI_PTR" }
 func (p *FfiPtr) Inspect() string         { return fmt.Sprintf("<ptr 0x%x>", p.Addr) }
 
+// ffiDlopen 加载动态库（平台相关，见 builtin_ffi_unix.go / _windows.go）
+// ffiDlsym 查找符号（平台相关）
+
 // newFfiModule 构造 FFI 模块
 //   import "ffi"
 //   let lib = ffi.load("libm.so")
@@ -48,7 +49,7 @@ func newFfiModule() *object.Module {
 				return newError("ffi.load 需要一个库路径或名字")
 			}
 			name := args[0].Inspect()
-			h, err := purego.Dlopen(name, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+			h, err := ffiDlopen(name)
 			if err != nil {
 				return newError("ffi.load: 无法加载 %q: %v", name, err)
 			}
@@ -217,7 +218,7 @@ func ffiDoCall(lib *FfiLib, args []object.Object, sig *object.Function) object.O
 	}
 
 	// 查符号
-	sym, err := purego.Dlsym(lib.H, fnName)
+	sym, err := ffiDlsym(lib.H, fnName)
 	if err != nil {
 		return newError("ffi: 符号 %q 未找到: %v", fnName, err)
 	}
