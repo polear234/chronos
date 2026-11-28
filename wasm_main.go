@@ -16,7 +16,7 @@ import (
 	"chronospp/parser"
 )
 
-var version = "1.5.0"
+var version = "1.5.1"
 
 type runResult struct {
 	Output string `json:"output"`

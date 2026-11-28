@@ -15,7 +15,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronospp/release.yml?branch=main)](https://github.com/polear234/chronospp/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronospp)](https://goreportcard.com/report/github.com/polear234/chronospp)
-[![Version](https://img.shields.io/badge/version-1.1.0-3ddcae.svg)]()
+[![Version](https://img.shields.io/badge/version-1.5.1-3ddcae.svg)]()
 [![Go Version](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/platform-android%20%7C%20linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
 
@@ -312,6 +312,20 @@ let html = ui.show()    // 生成 HTML（含交互回调）
 | `list([...])` | 显示列表 |
 | `progress(75)` | 进度条 |
 | `card(...)` / `row(...)` | 布局容器 |
+
+**响应式更新**：每个组件返回元素引用，可以随时更新：
+
+```chronos
+let count = 0
+let label = ui.text("计数: 0")
+
+ui.button("+1", fn() {
+    count = count + 1
+    label.update("计数: " + count)   // 局部更新，不重建 DOM
+})
+```
+
+滑块边滑边更新数值，复选框状态自动保持，UI 关闭后不影响 IDE 布局。
 
 > 手机 IDE 编译的 APK 内置 WebView，`ui.show()` 直接渲染。
 
