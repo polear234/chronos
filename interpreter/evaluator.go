@@ -432,7 +432,23 @@ func evalFunctionLiteral(fl *ast.FunctionLiteral, env *object.Environment) objec
 	}
 	// 命名函数：把函数名绑定到当前环境，支持递归调用
 	if fl.Name != "" {
-		env.Define(fl.Name, fn)
+		// 有参数类型时注册为重载；同时保持普通绑定（兼容旧行为）
+		hasTypeHint := false
+		for _, p := range fl.Parameters {
+			if p.TypeHint != "" {
+				hasTypeHint = true
+				break
+			}
+		}
+		if hasTypeHint {
+			env.DefineOverload(fn)
+			// 只在第一次定义时绑定名字，后续重载不覆盖
+			if _, exists := env.Get(fl.Name); !exists {
+				env.Define(fl.Name, fn)
+			}
+		} else {
+			env.Define(fl.Name, fn)
+		}
 	}
 	return fn
 }
@@ -456,6 +472,22 @@ func evalCallExpression(ce *ast.CallExpression, env *object.Environment) object.
 			if _, defined := env.Get(id.Value); !defined {
 				return evalGlobalArrayHOF(id.Value, ce.Arguments, env)
 			}
+		}
+
+		// 函数重载：按实参类型查找匹配的版本
+		if env.HasOverloads(id.Value) {
+			// 先求值所有实参（为了拿到类型）
+			args := make([]object.Object, len(ce.Arguments))
+			for i, a := range ce.Arguments {
+				args[i] = Eval(a, env)
+				if isError(args[i]) {
+					return args[i]
+				}
+			}
+			if fn := env.LookupOverload(id.Value, args); fn != nil {
+				return applyFunction(fn, args, env)
+			}
+			// 没匹配上，继续走普通调用（会报参数类型错误）
 		}
 	}
 

@@ -1429,3 +1429,52 @@ let x = new Sub()
 x.h() + x.s()`
 	testIntegerObject(t, testEval(t, inherit), 30)
 }
+
+func TestFunctionOverload(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		// 同名不同类型
+		{`int add(int a, int b) { return a + b }
+string add(string a, string b) { return a + b }
+add(1, 2)`, "3"},
+		{`int add(int a, int b) { return a + b }
+string add(string a, string b) { return a + b }
+add("x", "y")`, "xy"},
+		// 参数个数不同
+		{`int f(int a) { return a }
+int f(int a, int b) { return a + b }
+f(5)`, "5"},
+		{`int f(int a) { return a }
+int f(int a, int b) { return a + b }
+f(5, 3)`, "8"},
+		// int 传给 float 参数
+		{`float g(float x) { return x * 2 }
+g(3)`, "6"},
+		// 三种类型
+		{`int h(int x) { return 1 }
+string h(string x) { return "two" }
+int h(bool x) { return 3 }
+h(true)`, "3"},
+	}
+	for _, tt := range tests {
+		result := testEval(t, tt.input)
+		if isError(result) {
+			t.Errorf("%q 出错: %s", tt.input, result.Inspect())
+			continue
+		}
+		if result.Inspect() != tt.expected {
+			t.Errorf("%q = %s，期望 %s", tt.input, result.Inspect(), tt.expected)
+		}
+	}
+}
+
+func TestOverloadWithRecursion(t *testing.T) {
+	src := `int fact(int n) {
+    if n <= 1 { return 1 }
+    return n * fact(n - 1)
+}
+fact(5)`
+	testIntegerObject(t, testEval(t, src), 120)
+}

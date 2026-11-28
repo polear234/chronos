@@ -296,6 +296,10 @@ type Environment struct {
 	varTypes map[string]string   // 变量类型约束（"int"/"string"/"dict"/"array"），空串无约束
 	outer    *Environment
 
+	// overloads 函数重载表：函数名 → 签名 → 函数
+	// 签名格式："int,int"、"string"、"any,any"（无类型参数记作 any）
+	overloads map[string]map[string]*Function
+
 	ImportDir   string                 // import 解析的基准目录（相对路径基于此）
 	ImportChain map[string]bool        // 共享的导入链，用于循环 import 检测
 }
@@ -306,6 +310,7 @@ func NewEnvironment() *Environment {
 		consts:      make(map[string]bool),
 		history:     make(map[string][]Object),
 		varTypes:    make(map[string]string),
+		overloads:   make(map[string]map[string]*Function),
 		ImportChain: make(map[string]bool),
 	}
 }
@@ -316,6 +321,7 @@ func NewEnclosedEnvironment(outer *Environment) *Environment {
 		consts:      make(map[string]bool),
 		history:     make(map[string][]Object),
 		varTypes:    make(map[string]string),
+		overloads:   make(map[string]map[string]*Function),
 		outer:       outer,
 		ImportChain: make(map[string]bool),
 	}
@@ -349,6 +355,137 @@ func (e *Environment) Get(name string) (Object, bool) {
 }
 
 // Set 在当前作用域（或已存在变量的最近作用域）赋值
+// functionSignature 生成函数签名："int,string" / "any" / ""
+func functionSignature(fn *Function) string {
+	parts := make([]string, len(fn.Parameters))
+	for i, p := range fn.Parameters {
+		if p.TypeHint != "" {
+			parts[i] = p.TypeHint
+		} else {
+			parts[i] = "any"
+		}
+	}
+	return strings.Join(parts, ",")
+}
+
+// DefineOverload 注册一个重载函数
+func (e *Environment) DefineOverload(fn *Function) {
+	if e.overloads == nil {
+		e.overloads = make(map[string]map[string]*Function)
+	}
+	sig := functionSignature(fn)
+	if e.overloads[fn.Name] == nil {
+		e.overloads[fn.Name] = make(map[string]*Function)
+	}
+	e.overloads[fn.Name][sig] = fn
+}
+
+// LookupOverload 按实参类型查找匹配的重载
+// 匹配优先级：完全匹配 > 可隐式转换 > any
+func (e *Environment) LookupOverload(name string, args []Object) *Function {
+	overloads, ok := e.overloads[name]
+	if !ok || len(overloads) == 0 {
+		return nil
+	}
+
+	// 1. 完全匹配（参数个数 + 类型完全一致）
+	exact := make([]string, len(args))
+	for i, a := range args {
+		exact[i] = argTypeName(a)
+	}
+	if fn, ok := overloads[strings.Join(exact, ",")]; ok {
+		return fn
+	}
+
+	// 2. 可转换匹配（如 int → float）
+	for _, fn := range overloads {
+		if len(fn.Parameters) != len(args) {
+			continue
+		}
+		ok := true
+		for i, p := range fn.Parameters {
+			if p.TypeHint == "" || p.TypeHint == "any" {
+				continue
+			}
+			if !canConvertTo(args[i], p.TypeHint) {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return fn
+		}
+	}
+
+	// 3. any 参数兜底
+	anySig := make([]string, len(args))
+	for i := range anySig {
+		anySig[i] = "any"
+	}
+	if fn, ok := overloads[strings.Join(anySig, ",")]; ok {
+		return fn
+	}
+	return nil
+}
+
+// HasOverloads 判断某个函数名是否有重载
+func (e *Environment) HasOverloads(name string) bool {
+	_, ok := e.overloads[name]
+	return ok
+}
+
+// OverloadCount 返回某函数的重载数量
+func (e *Environment) OverloadCount(name string) int {
+	return len(e.overloads[name])
+}
+
+// argTypeName 把对象类型转成签名用的类型名
+func argTypeName(o Object) string {
+	switch o.(type) {
+	case *Integer:
+		return "int"
+	case *Float:
+		return "float"
+	case *String:
+		return "string"
+	case *Boolean:
+		return "bool"
+	case *Array:
+		return "array"
+	case *Hash:
+		return "hash"
+	}
+	return strings.ToLower(string(o.Type()))
+}
+
+// canConvertTo 判断值能否转换成目标类型
+func canConvertTo(o Object, target string) bool {
+	switch target {
+	case "int":
+		_, ok := o.(*Integer)
+		return ok
+	case "float":
+		switch o.(type) {
+		case *Float, *Integer:
+			return true
+		}
+		return false
+	case "string":
+		_, ok := o.(*String)
+		return ok
+	case "bool":
+		_, ok := o.(*Boolean)
+		return ok
+	case "array":
+		_, ok := o.(*Array)
+		return ok
+	case "hash":
+		_, ok := o.(*Hash)
+		return ok
+	}
+	return false
+}
+
 func (e *Environment) Set(name string, val Object) Object {
 	scope := e.findScope(name)
 	if scope != nil {
