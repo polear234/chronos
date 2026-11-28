@@ -1,0 +1,83 @@
+// GTA VC 改金钱示例
+// 用法：以管理员身份运行
+//   chpp run gta_money.chpp
+
+import "process"
+
+print("=== GTA VC 金钱修改器 ===")
+print("")
+
+// 1. 找游戏进程
+let pid = process.find("gta-vc")
+if pid < 0 {
+    pid = process.find("gta")
+}
+if pid < 0 {
+    print("❌ 没找到 GTA VC，请先启动游戏")
+    print("")
+    print("提示：可以用 chpp 查看所有进程：")
+    print("  import \"process\"")
+    print("  for p in process.list() { print(p[\"name\"]) }")
+    return
+}
+print("✓ 找到游戏，PID =", pid)
+print("")
+
+// 2. 扫描当前金钱
+print("请在游戏里看一下当前的金钱数额，然后输入（直接回车用 1000）：")
+let answer = input("金钱: ")
+let money = 1000
+if len(answer) > 0 {
+    money = int(answer)
+}
+
+print("正在扫描值为", money, "的内存…")
+let hits = process.scanInt(pid, money)
+print("找到", len(hits), "处")
+print("")
+
+if len(hits) == 0 {
+    print("❌ 没找到，可能：")
+    print("  - 金钱数值不对（请确认游戏里显示的数字）")
+    print("  - 权限不够（需要管理员/root）")
+    return
+}
+
+if len(hits) > 50 {
+    print("地址太多（", len(hits), "处），建议缩小范围：")
+    print("")
+    print("1. 回到游戏，花点钱让金额变化")
+    print("2. 记下新金额")
+    print("3. 重新运行本脚本，输入新金额")
+    print("")
+    print("或者继续，我会把全部地址都改成 999999（可能改到无关的内存）")
+    let ok = input("继续吗？(y/n): ")
+    if ok != "y" && ok != "Y" {
+        return
+    }
+}
+
+// 3. 改值
+print("")
+print("要把金钱改成多少？（直接回车用 999999）")
+let answer2 = input("新值: ")
+let newMoney = 999999
+if len(answer2) > 0 {
+    newMoney = int(answer2)
+}
+
+print("")
+print("正在修改", len(hits), "处地址…")
+let count = 0
+for h in hits {
+    let oldVal = process.readInt(pid, h["addr"])
+    if oldVal == money {
+        process.writeInt(pid, h["addr"], newMoney)
+        count = count + 1
+    }
+}
+
+print("✓ 已修改", count, "处")
+print("")
+print("回到游戏看看金钱变了吗？")
+print("（如果没变，说明找错地址了，试试先花钱再扫描）")

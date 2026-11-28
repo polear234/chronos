@@ -259,10 +259,14 @@ func (p *Parser) parseConstStatement() *ast.ConstStatement {
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 
-	p.nextToken()
-	if !p.curTokenIs(token.SEMICOLON) && !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
-		stmt.ReturnValue = p.parseExpression(LOWEST)
+	// return 后面直接是 } 或 ; 或 EOF 时，是裸 return，不消费 token
+	// 让 block 循环能看到 } 正常结束
+	if p.peekTokenIs(token.RBRACE) || p.peekTokenIs(token.SEMICOLON) || p.peekTokenIs(token.EOF) {
+		return stmt
 	}
+
+	p.nextToken()
+	stmt.ReturnValue = p.parseExpression(LOWEST)
 	p.consumeSemicolon()
 	return stmt
 }

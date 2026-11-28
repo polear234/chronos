@@ -342,3 +342,21 @@ func checkParserErrors(t *testing.T, p *Parser) {
 	}
 	t.FailNow()
 }
+
+func TestBareReturn(t *testing.T) {
+	// return 后面直接跟 } 应该能正常解析
+	srcs := []string{
+		"fn f() { return }",
+		"if true {\n return\n}",
+		"fn f() {\n if true {\n return\n }\n print(1)\n}",
+		"while true {\n return\n}",
+	}
+	for _, src := range srcs {
+		l := lexer.New(src)
+		p := New(l)
+		p.ParseProgram()
+		if len(p.Errors()) > 0 {
+			t.Errorf("%q 解析失败: %v", src, p.Errors())
+		}
+	}
+}
