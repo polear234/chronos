@@ -397,14 +397,13 @@ function syntaxCheck(label) {
   return true;
 }
 
-// 打包为 APK
+// 打包为 APK（弹出自定义选项）
 document.getElementById('apkBtn').addEventListener('click', () => {
   if (!(bridge && bridge.compileApk)) {
     alert('打包功能仅在 Android App 内可用');
     return;
   }
-  if (!syntaxCheck('打包 APK')) return;
-  bridge.compileApk(curName, pkgEl.value, codeEl.value);
+  openApkModal();
 });
 
 // 编译为 shell 脚本
@@ -686,5 +685,125 @@ codeEl.addEventListener('keydown', (e) => {
   }
 });
 </script>
+
+<!-- 打包 APK 自定义弹窗 -->
+<div id="apkModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#2d2d30;border-radius:12px;width:90%;max-width:420px;padding:24px;max-height:85vh;overflow-y:auto;">
+    <h3 style="margin:0 0 16px;font-size:18px;color:#e0e0e0">📦 打包 APK</h3>
+
+    <!-- APK 名称 -->
+    <label style="display:block;margin:12px 0 4px;font-size:13px;color:#aaa">APK 文件名</label>
+    <input id="apkName" placeholder="myapp" spellcheck="false"
+      style="width:100%;padding:10px;border:1px solid #555;border-radius:8px;background:#1e1e1e;color:#e0e0e0;font-size:15px;box-sizing:border-box">
+
+    <!-- 包名 -->
+    <label style="display:block;margin:12px 0 4px;font-size:13px;color:#aaa">包名（Package）</label>
+    <input id="apkPkg" placeholder="com.example.myapp" spellcheck="false"
+      style="width:100%;padding:10px;border:1px solid #555;border-radius:8px;background:#1e1e1e;color:#e0e0e0;font-size:15px;box-sizing:border-box">
+    <div style="font-size:11px;color:#777;margin-top:4px">如 com.example.myapp（至少两段，只能用字母数字和点）</div>
+
+    <!-- 图标选择 -->
+    <label style="display:block;margin:16px 0 4px;font-size:13px;color:#aaa">应用图标</label>
+    <div id="iconPresets" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <div class="icon-opt" data-icon="default" onclick="selectIcon(this)" style="cursor:pointer;padding:8px;border:2px solid #007AFF;border-radius:8px;text-align:center;width:64px">
+        <div style="font-size:28px">⚡</div>
+        <div style="font-size:10px;color:#aaa">默认</div>
+      </div>
+      <div class="icon-opt" data-icon="game" onclick="selectIcon(this)" style="cursor:pointer;padding:8px;border:2px solid transparent;border-radius:8px;text-align:center;width:64px">
+        <div style="font-size:28px">🎮</div>
+        <div style="font-size:10px;color:#aaa">游戏</div>
+      </div>
+      <div class="icon-opt" data-icon="tool" onclick="selectIcon(this)" style="cursor:pointer;padding:8px;border:2px solid transparent;border-radius:8px;text-align:center;width:64px">
+        <div style="font-size:28px">🔧</div>
+        <div style="font-size:10px;color:#aaa">工具</div>
+      </div>
+      <div class="icon-opt" data-icon="chat" onclick="selectIcon(this)" style="cursor:pointer;padding:8px;border:2px solid transparent;border-radius:8px;text-align:center;width:64px">
+        <div style="font-size:28px">💬</div>
+        <div style="font-size:10px;color:#aaa">聊天</div>
+      </div>
+      <div class="icon-opt" data-icon="music" onclick="selectIcon(this)" style="cursor:pointer;padding:8px;border:2px solid transparent;border-radius:8px;text-align:center;width:64px">
+        <div style="font-size:28px">🎵</div>
+        <div style="font-size:10px;color:#aaa">音乐</div>
+      </div>
+      <div class="icon-opt" data-icon="custom" onclick="selectIcon(this);document.getElementById('iconFile').click()" style="cursor:pointer;padding:8px;border:2px solid transparent;border-radius:8px;text-align:center;width:64px">
+        <div style="font-size:28px">📁</div>
+        <div style="font-size:10px;color:#aaa">自定义</div>
+      </div>
+    </div>
+    <input type="file" id="iconFile" accept="image/*" style="display:none" onchange="loadCustomIcon(this)">
+
+    <!-- 图标预览 -->
+    <div id="iconPreview" style="display:none;margin:12px 0;text-align:center">
+      <img id="iconImg" style="width:64px;height:64px;border-radius:14px;border:2px solid #555">
+      <div style="font-size:11px;color:#777;margin-top:4px">图标预览</div>
+    </div>
+
+    <!-- 按钮 -->
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button onclick="closeApkModal()" style="flex:1;padding:12px;border:1px solid #555;border-radius:8px;background:transparent;color:#ccc;font-size:15px">取消</button>
+      <button onclick="doBuildApk()" style="flex:1;padding:12px;border:none;border-radius:8px;background:#007AFF;color:#fff;font-size:15px;font-weight:600">开始打包</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedIcon = 'default';
+let customIconData = null;
+
+function selectIcon(el) {
+  document.querySelectorAll('.icon-opt').forEach(e => e.style.borderColor = 'transparent');
+  el.style.borderColor = '#007AFF';
+  selectedIcon = el.dataset.icon;
+  if (selectedIcon !== 'custom') {
+    document.getElementById('iconPreview').style.display = 'none';
+    customIconData = null;
+  }
+}
+
+function loadCustomIcon(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    customIconData = e.target.result;
+    document.getElementById('iconImg').src = customIconData;
+    document.getElementById('iconPreview').style.display = 'block';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function openApkModal() {
+  const name = curName.replace(/\.(chpp|chr|px)$/, '') || 'myapp';
+  document.getElementById('apkName').value = name;
+  document.getElementById('apkPkg').value = pkgEl.value || 'com.example.' + name.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  document.getElementById('apkModal').style.display = 'flex';
+}
+
+function closeApkModal() {
+  document.getElementById('apkModal').style.display = 'none';
+}
+
+function doBuildApk() {
+  const name = document.getElementById('apkName').value.trim();
+  const pkg = document.getElementById('apkPkg').value.trim();
+
+  if (!name) { alert('请输入 APK 文件名'); return; }
+  if (!pkg || pkg.split('.').length < 2) { alert('包名至少两段，如 com.example.myapp'); return; }
+  if (!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(pkg)) {
+    alert('包名格式不正确，只能用字母数字和点，每段以字母开头');
+    return;
+  }
+
+  closeApkModal();
+  if (!(bridge && bridge.compileApk)) {
+    alert('打包功能仅在 Android App 内可用');
+    return;
+  }
+  if (!syntaxCheck('打包 APK')) return;
+
+  // 传递自定义参数
+  bridge.compileApkWithOptions(name, pkg, codeEl.value, selectedIcon, customIconData || '');
+}
+</script>
+
 </body>
 </html>

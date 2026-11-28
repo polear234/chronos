@@ -252,6 +252,167 @@ public class MainActivity extends Activity {
             }).start();
         }
 
+
+        /** 打包 APK（带自定义选项：文件名、包名、图标） */
+        @JavascriptInterface
+        public void compileApkWithOptions(final String baseName, final String pkgName,
+                                          final String script, final String iconType,
+                                          final String iconData) {
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    try {
+                        File dir = new File(getCacheDir(), "apkbuild");
+                        if (!dir.exists() && !dir.mkdirs()) {
+                            throw new IOException("无法创建缓存目录");
+                        }
+                        File unsigned = new File(dir, "unsigned.apk");
+                        File signed = new File(dir, "signed.apk");
+                        if (signed.exists()) {
+                            //noinspection ResultOfMethodCallIgnored
+                            signed.delete();
+                        }
+
+                        String pkg = normalizePkg(pkgName);
+                        rewriteTemplate(unsigned, script, pkg);
+
+                        // 替换图标
+                        if (!"default".equals(iconType)) {
+                            replaceIcon(unsigned, iconType, iconData);
+                        }
+
+                        signApk(unsigned, signed);
+
+                        final File out = signed;
+                        runOnUiThread(new Runnable() {
+                            @Override public void run() { autoInstall(out); }
+                        });
+                    } catch (final Exception e) {
+                        postJs("onApkResult", false, "打包失败: " + e);
+                    }
+                }
+            }).start();
+        }
+
+        /** 替换 APK 中的应用图标 */
+        private void replaceIcon(File apkFile, String iconType, String iconData) throws IOException {
+            // 生成图标位图（各尺寸）
+            android.graphics.Bitmap icon = null;
+            if ("custom".equals(iconType) && iconData != null && iconData.startsWith("data:image")) {
+                // Base64 自定义图标
+                String b64 = iconData.substring(iconData.indexOf(",") + 1);
+                byte[] imgBytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                icon = android.graphics.BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
+            } else {
+                // 预设图标：用颜色 + emoji 生成
+                icon = generatePresetIcon(iconType);
+            }
+            if (icon == null) return;
+
+            // 各密度图标尺寸
+            int[][] sizes = {{48,48},{72,72},{96,96},{144,144},{192,192}};
+            String[] folders = {"mipmap-mdpi","mipmap-hdpi","mipmap-xhdpi","mipmap-xxhdpi","mipmap-xxxhdpi"};
+
+            // 读取 APK，替换图标文件
+            java.util.LinkedHashMap<String, byte[]> entries = new java.util.LinkedHashMap<>();
+            java.util.List<String> order = new java.util.ArrayList<>();
+            try (ZipInputStream zin = new ZipInputStream(new FileInputStream(apkFile))) {
+                byte[] buf = new byte[16384];
+                ZipEntry e;
+                while ((e = zin.getNextEntry()) != null) {
+                    String name = e.getName();
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream(
+                            e.getSize() > 0 ? (int) e.getSize() : 8192);
+                    int n;
+                    while ((n = zin.read(buf)) > 0) {
+                        bos.write(buf, 0, n);
+                    }
+                    byte[] data = bos.toByteArray();
+
+                    // 替换图标文件
+                    boolean isIcon = false;
+                    for (int i = 0; i < folders.length; i++) {
+                        if (name.equals("res/" + folders[i] + "/ic_launcher.png")) {
+                            android.graphics.Bitmap scaled = android.graphics.Bitmap.createScaledBitmap(
+                                    icon, sizes[i][0], sizes[i][1], true);
+                            ByteArrayOutputStream pngOut = new ByteArrayOutputStream();
+                            scaled.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, pngOut);
+                            data = pngOut.toByteArray();
+                            isIcon = true;
+                            break;
+                        }
+                    }
+                    if (!isIcon && name.equals("resources.arsc")) {
+                        // 保持 STORED 原样
+                    }
+                    entries.put(name, data);
+                    order.add(name);
+                }
+            }
+
+            // 重写 APK
+            try (ZipOutputStream zout = new ZipOutputStream(
+                    new BufferedOutputStream(new FileOutputStream(apkFile)))) {
+                // resources.arsc 必须 STORED 且第一
+                byte[] arsc = entries.remove("resources.arsc");
+                if (arsc != null) {
+                    ZipEntry arscEntry = new ZipEntry("resources.arsc");
+                    arscEntry.setMethod(ZipEntry.STORED);
+                    arscEntry.setSize(arsc.length);
+                    arscEntry.setCrc(crc32(arsc));
+                    zout.putNextEntry(arscEntry);
+                    zout.write(arsc);
+                    zout.closeEntry();
+                }
+                for (String name : order) {
+                    byte[] data = entries.get(name);
+                    if (data == null) continue;
+                    ZipEntry ne = new ZipEntry(name);
+                    zout.putNextEntry(ne);
+                    zout.write(data);
+                    zout.closeEntry();
+                }
+            }
+        }
+
+        /** 生成预设图标 */
+        private android.graphics.Bitmap generatePresetIcon(String type) {
+            int bg, fg;
+            String emoji;
+            switch (type) {
+                case "game":  bg = 0xFF1B2838; emoji = "\uD83C\uDFAE"; break;
+                case "tool":  bg = 0xFF2D2D2D; emoji = "\uD83D\uDD27"; break;
+                case "chat":  bg = 0xFF007AFF; emoji = "\uD83D\uDCAC"; break;
+                case "music": bg = 0xFFAF52DE; emoji = "\uD83C\uDFB5"; break;
+                default:      bg = 0xFF007AFF; emoji = "⚡"; break;
+            }
+            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(192, 192,
+                    android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
+            android.graphics.Paint paint = new android.graphics.Paint();
+            paint.setColor(bg);
+            paint.setAntiAlias(true);
+
+            // 圆角矩形背景
+            android.graphics.RectF rect = new android.graphics.RectF(0, 0, 192, 192);
+            canvas.drawRoundRect(rect, 36, 36, paint);
+
+            // 居中 emoji 文字
+            paint.setColor(0xFFFFFFFF);
+            paint.setTextSize(96);
+            paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+            android.graphics.Paint.FontMetrics fm = paint.getFontMetrics();
+            float cy = 96 - (fm.ascent + fm.descent) / 2;
+            canvas.drawText(emoji, 96, cy, paint);
+
+            return bmp;
+        }
+
+        private long crc32(byte[] data) {
+            java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+            crc.update(data);
+            return crc.getValue();
+        }
+
         /** 生成自包含的 sh 脚本（内嵌 arm64 解释器 + 源码） */
         @JavascriptInterface
         public void compileShell(final String baseName, final String script) {
