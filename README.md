@@ -4,20 +4,22 @@
 
 # Chronospp
 
-**一门把「时间」做成一等公民的脚本语言**
+**一门把「时间」做成一等公民的高级编程语言**
 
-*变量可回滚 · 数据可快照 · 一行编译成 APK / SH*
+*C++ 的语法 · Python 的表达力 · 独有的时间旅行*
+
+*闭包 · 类与接口 · 指针 · 强类型 · 并行 · 包管理*
 
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/polear234/chronospp/release.yml?branch=main)](https://github.com/polear234/chronospp/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/polear234/chronospp)](https://goreportcard.com/report/github.com/polear234/chronospp)
-[![Version](https://img.shields.io/badge/version-1.0.0-3ddcae.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-3ddcae.svg)]()
 [![Go Version](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/platform-android%20%7C%20linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
 
-[![Lines](https://img.shields.io/badge/code-7k%20lines-informational.svg)]()
+[![Lines](https://img.shields.io/badge/code-11k%20lines-informational.svg)]()
 [![Deps](https://img.shields.io/badge/dependencies-zero-success.svg)]()
 
 </div>
@@ -193,14 +195,18 @@ chpp run hello.chpp
 | 类别 | 能力 |
 |------|------|
 | 🕐 **时间特性** | `traveller` 回滚变量 · `withSnapshot` 事务快照 · `Timeline` 提交/撤销 |
-| 🧠 **语言核心** | 动态类型 · 一等函数 · 闭包 · 递归 · 高阶函数 |
-| 🏛️ **面向对象** | 类 · 单继承 · 多态 · `this` / `super` · 方法重写 · 继承环检测 |
+| 🧠 **语言核心** | 一等函数 · 闭包 · 递归 · 高阶函数 · 可选静态类型 |
+| 🏛️ **面向对象** | 类 · 单继承 · **接口** `interface`/`implements` · 多态 · `this`/`super` |
+| 🔧 **C++ 风格** | **指针** `&x`/`*p` · 强类型函数 `int add(int a, int b)` · 数据流 `prints << x << endl` |
+| ⚡ **并发** | `start(fn1, fn2)` 真并行执行，实测快 3 倍 |
 | ⛓️ **语法糖** | 管道 `\|>` · 方法链 · 类型标注 · 复合赋值 `+= -= *= /=` |
-| 🎯 **控制流** | `if`/`elif`/`else` · `while` · `for-in` · `break`/`continue` |
+| 🎯 **控制流** | `if`/`elif`/`else` · `while` · `for-in` · `break`/`continue` · 循环 `else` |
 | 🧩 **模式匹配** | `match` / `case` / `default` |
 | 🛡️ **错误处理** | `try` / `catch` / `finally` / `throw` |
-| 📦 **模块系统** | `import` / `as` · 独立环境 · 循环引用检测 |
+| 📦 **模块系统** | `import` / `as` · 循环引用检测 · 内置 `os`/`math`/`requests` |
+| 📚 **包管理** | `.chm` 包 · `chpp install/search/info/list/freeze/pack` · 依赖与版本约束 |
 | 🌏 **国际化** | Unicode 标识符：中文 / 日文 / 俄文均可命名 |
+| 🖥️ **工具链** | `chpp serve` 静态服务器 · `chpp upgrade` 自更新 · **Chronospp Studio** 编辑器 |
 | 📱 **分发** | 编译为 APK · 编译为自包含 SH 脚本 |
 
 ---
@@ -264,6 +270,115 @@ class Dog extends Animal {
 let d = new Dog("Buddy")
 print(d.speak())   // "Buddy barks!"
 ```
+
+### 接口
+
+```chronos
+interface Speaker {
+    fn speak()
+    fn name()
+}
+
+class Dog implements Speaker {
+    fn init(n) { this.n = n }
+    fn speak() { return this.n + " 汪！" }
+    fn name() { return this.n }
+}
+
+class Cat implements Speaker {
+    fn speak() { return "喵" }
+    // 缺 name() → 定义类时直接报错
+}
+```
+
+多个接口用逗号分隔：`class Robot implements Speaker, Walker, Flyer`
+
+### 指针
+
+```chronos
+let x = 42
+let p = &x          // 取地址
+print(*p)           // 解引用 → 42
+*p = 100            // 通过指针修改
+print(x)            // 100
+
+int increment(int *ptr) {
+    *ptr = *ptr + 1
+    return *ptr
+}
+
+let n = 10
+increment(&n)
+print(n)            // 11（原变量被改了）
+```
+
+### 强类型函数
+
+```chronos
+int add(int a, int b) {
+    return a + b
+}
+
+add(1, 2)           // ✅ 3
+add(1)              // ❌ 需要 2 个参数，收到 1 个
+add("x", "y")       // ❌ 参数 a 声明为 int，收到 STRING
+
+int bad() { return "hi" }    // ❌ 声明返回 int，实际返回 STRING
+```
+
+类型为 `any` 或不写类型时不做检查。`fn` 风格与 C++ 风格可以混用。
+
+### 数据流
+
+```chronos
+prints << "Hello" << endl        // 输出并换行
+prints << "不换行"
+prints << 42 << endl
+
+let n = 0
+inputs >> n                      // 读入到已声明类型的变量
+```
+
+`prints << x` 不换行（同 C++ `cout`），要换行写 `endl` 或 `"\n"`。
+
+### 并行
+
+```chronos
+fn slow_a() { /* ... */ }
+fn slow_b() { /* ... */ }
+
+let results = start(slow_a, slow_b)   // 并行执行
+print(results[0], results[1])
+
+// 带参数
+fn work(n) { return n * n }
+start(work(3), work(4))               // → [9, 16]
+```
+
+### 包管理
+
+```bash
+chpp install json              # 从 GitHub 装
+chpp install ./mypkg.chm       # 装本地文件
+chpp search                    # 看看有哪些包
+chpp info json                 # 查看详情
+chpp list                      # 已安装
+chpp freeze                    # 输出精确版本
+chpp pack ./mypkg -o out.chm   # 打包
+chpp uninstall json            # 卸载
+```
+
+依赖写在 `manifest.json`：
+
+```json
+{
+  "name": "mypkg",
+  "version": "1.0.0",
+  "requires": { "json": ">=1.0.0", "string": "^1.2.0" }
+}
+```
+
+版本约束支持 `>=` `<` `^` `~` `*`。
 
 ### 类型转换
 
