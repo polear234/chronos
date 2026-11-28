@@ -4,6 +4,7 @@ package interpreter
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"math"
 	"sync"
@@ -350,3 +351,26 @@ func ffiCallFloat(libHandle uintptr, sym uintptr, name string, retType string, a
 }
 
 var _ = math.Pi
+
+// toInt 把对象转成 int64（通用辅助）
+func toInt(o object.Object) int64 {
+	switch v := o.(type) {
+	case *object.Integer:
+		return v.Value
+	case *object.Float:
+		return int64(v.Value)
+	case *object.String:
+		n, _ := strconv.ParseInt(strings.TrimSpace(v.Value), 0, 64)
+		return n
+	}
+	return 0
+}
+
+// float32 位操作
+func float32frombits(b uint32) float32 {
+	return *(*float32)(unsafe.Pointer(&b))
+}
+
+func float32bits(f float32) uint32 {
+	return *(*uint32)(unsafe.Pointer(&f))
+}
