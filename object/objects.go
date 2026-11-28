@@ -187,6 +187,17 @@ type Module struct {
 func (m *Module) Type() ObjectType { return MODULE_OBJ }
 func (m *Module) Inspect() string  { return "<module " + m.Name + ">" }
 
+// Interface 接口：只记录方法名，运行时检查实现类
+type Interface struct {
+	Name    string
+	Methods []string
+}
+
+func (i *Interface) Type() ObjectType { return INTERFACE_OBJ }
+func (i *Interface) Inspect() string {
+	return "<interface " + i.Name + ">"
+}
+
 // Pointer 指针对象：指向某个变量（按名字引用），支持 *p 读写
 type Pointer struct {
 	Env  *Environment // 目标变量所在的作用域

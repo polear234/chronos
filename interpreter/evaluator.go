@@ -156,6 +156,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalMethodCallExpression(node, env)
 	case *ast.ClassLiteral:
 		return evalClassLiteral(node, env)
+	case *ast.InterfaceLiteral:
+		return evalInterfaceLiteral(node, env)
 	case *ast.NewExpression:
 		return evalNewExpression(node, env)
 	case *ast.ThisExpression:
@@ -1545,8 +1547,46 @@ func evalClassLiteral(cl *ast.ClassLiteral, env *object.Environment) object.Obje
 		Methods:    methods,
 		Properties: properties,
 	}
+
+	// 检查 implements 的接口是否都实现了
+	for _, ifaceIdent := range cl.Interfaces {
+		ifaceVal, ok := env.Get(ifaceIdent.Value)
+		if !ok {
+			return newError("类 %s 声明实现接口 %s，但该接口不存在",
+				cl.Name.Value, ifaceIdent.Value)
+		}
+		iface, ok := ifaceVal.(*object.Interface)
+		if !ok {
+			return newError("%s 不是接口（%s）", ifaceIdent.Value, ifaceVal.Type())
+		}
+		// 逐个检查方法
+		for _, methodName := range iface.Methods {
+			if _, defClass := lookupMethod(class, methodName); defClass == nil {
+				return newError("类 %s 声明实现接口 %s，但缺少方法 %s()",
+					cl.Name.Value, iface.Name, methodName)
+			}
+		}
+	}
+
 	env.Define(cl.Name.Value, class)
 	return class
+}
+
+// evalInterfaceLiteral 求值接口声明
+func evalInterfaceLiteral(il *ast.InterfaceLiteral, env *object.Environment) object.Object {
+	if il.Name == nil {
+		return newError("interface 缺少名字")
+	}
+	methods := make([]string, 0, len(il.Methods))
+	for _, m := range il.Methods {
+		methods = append(methods, m.Name)
+	}
+	iface := &object.Interface{
+		Name:    il.Name.Value,
+		Methods: methods,
+	}
+	env.Define(il.Name.Value, iface)
+	return iface
 }
 
 // hasInheritanceCycle 沿父类链查找，若链上存在名为 className 的类则返回 true（说明会构成环）

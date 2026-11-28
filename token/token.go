@@ -84,7 +84,8 @@ const (
 	AND_KW   = "AND"
 	OR_KW    = "OR"
 	NOT_KW   = "NOT"
-	CLASS    = "CLASS"
+	CLASS     = "CLASS"
+	INTERFACE = "INTERFACE"
 	NEW      = "NEW"
 	THIS     = "THIS"
 	SUPER    = "SUPER"
@@ -120,7 +121,8 @@ var keywords = map[string]TokenType{
 	"and":      AND_KW,
 	"or":       OR_KW,
 	"not":      NOT_KW,
-	"class":    CLASS,
+	"class":     CLASS,
+	"interface": INTERFACE,
 	"new":      NEW,
 	"this":     THIS,
 	"super":    SUPER,

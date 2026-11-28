@@ -507,8 +507,41 @@ type ClassLiteral struct {
 	Token       token.Token
 	Name        *Identifier
 	SuperClass  Expression
+	Interfaces  []*Identifier   // implements A, B
 	Methods     map[string]*FunctionLiteral
 	Properties  map[string]Expression
+}
+
+// InterfaceLiteral 接口声明：interface Name { fn method(args) }
+type InterfaceLiteral struct {
+	Token   token.Token
+	Name    *Identifier
+	Methods []*InterfaceMethod
+}
+
+// InterfaceMethod 接口里的方法签名
+type InterfaceMethod struct {
+	Name   string
+	Params []*Identifier
+}
+
+func (il *InterfaceLiteral) expressionNode()      {}
+func (il *InterfaceLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *InterfaceLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("interface ")
+	if il.Name != nil {
+		out.WriteString(il.Name.Value)
+	}
+	out.WriteString(" {")
+	for i, m := range il.Methods {
+		if i > 0 {
+			out.WriteString(",")
+		}
+		out.WriteString(" " + m.Name)
+	}
+	out.WriteString(" }")
+	return out.String()
 }
 
 func (cl *ClassLiteral) expressionNode()      {}

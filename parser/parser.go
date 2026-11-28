@@ -698,6 +698,68 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 	return hash
 }
 
+// parseInterfaceLiteral 解析接口声明：
+//   interface Animal {
+//       fn speak()
+//       fn name()
+//   }
+func (p *Parser) parseInterfaceLiteral() ast.Expression {
+	il := &ast.InterfaceLiteral{Token: p.curToken}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	il.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	p.nextToken()
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		// 方法签名：fn name(params)
+		if p.curTokenIs(token.FN) {
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			m := &ast.InterfaceMethod{Name: p.curToken.Literal}
+
+			if !p.expectPeek(token.LPAREN) {
+				return nil
+			}
+			// 解析参数（可能带类型）
+			if !p.peekTokenIs(token.RPAREN) {
+				p.nextToken()
+				for {
+					if p.curTokenIs(token.IDENT) {
+						m.Params = append(m.Params, &ast.Identifier{
+							Token: p.curToken,
+							Value: p.curToken.Literal,
+						})
+					}
+					if p.peekTokenIs(token.COMMA) {
+						p.nextToken()
+						p.nextToken()
+						continue
+					}
+					break
+				}
+			}
+			if !p.expectPeek(token.RPAREN) {
+				return nil
+			}
+			il.Methods = append(il.Methods, m)
+		}
+		p.nextToken()
+	}
+
+	if !p.curTokenIs(token.RBRACE) {
+		p.errors = append(p.errors, "interface 缺少 }")
+		return nil
+	}
+	return il
+}
+
 func (p *Parser) parseClassLiteral() ast.Expression {
 	cl := &ast.ClassLiteral{
 		Token:      p.curToken,
@@ -715,6 +777,25 @@ func (p *Parser) parseClassLiteral() ast.Expression {
 		p.nextToken() // 消费 extends
 		p.nextToken()
 		cl.SuperClass = p.parseExpression(LOWEST)
+	}
+
+	// implements A, B 处理
+	if p.peekTokenIs(token.IDENT) && p.peekToken.Literal == "implements" {
+		p.nextToken() // 消费 implements
+		for {
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			cl.Interfaces = append(cl.Interfaces, &ast.Identifier{
+				Token: p.curToken,
+				Value: p.curToken.Literal,
+			})
+			if p.peekTokenIs(token.COMMA) {
+				p.nextToken()
+				continue
+			}
+			break
+		}
 	}
 
 	if !p.expectPeek(token.LBRACE) {
@@ -1145,7 +1226,8 @@ func (p *Parser) registerPrefixFns() {
 		token.FN:       p.parseFunctionLiteral,
 		token.LBRACKET: p.parseArrayLiteral,
 		token.LBRACE:   p.parseHashLiteral,
-		token.CLASS:    p.parseClassLiteral,
+		token.CLASS:     p.parseClassLiteral,
+		token.INTERFACE: p.parseInterfaceLiteral,
 		token.NEW:      p.parseNewExpression,
 		token.THIS:     p.parseThisExpression,
 		token.SUPER:    p.parseSuperExpression,

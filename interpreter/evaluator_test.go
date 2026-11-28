@@ -1380,3 +1380,52 @@ f(42)`); !isError(r) {
 		t.Error("传非指针给指针参数应该报错")
 	}
 }
+
+func TestInterface(t *testing.T) {
+	// 正确实现
+	ok := `interface Speaker { fn speak() }
+class Dog implements Speaker {
+    fn speak() { return "woof" }
+}
+let d = new Dog()
+d.speak()`
+	if r := testEval(t, ok); r.Inspect() != "woof" {
+		t.Errorf("期望 woof，得到 %s", r.Inspect())
+	}
+
+	// 缺少方法
+	missing := `interface Speaker { fn speak() fn name() }
+class Cat implements Speaker {
+    fn speak() { return "meow" }
+}`
+	if r := testEval(t, missing); !isError(r) {
+		t.Error("缺少方法应该报错")
+	}
+
+	// 接口不存在
+	notExist := `class Bad implements NotExist { }`
+	if r := testEval(t, notExist); !isError(r) {
+		t.Error("接口不存在应该报错")
+	}
+
+	// 多接口
+	multi := `interface A { fn a() }
+interface B { fn b() }
+class C implements A, B {
+    fn a() { return 1 }
+    fn b() { return 2 }
+}
+let c = new C()
+c.a() + c.b()`
+	testIntegerObject(t, testEval(t, multi), 3)
+
+	// 继承 + 接口
+	inherit := `interface S { fn s() }
+class Base { fn h() { return 10 } }
+class Sub extends Base implements S {
+    fn s() { return 20 }
+}
+let x = new Sub()
+x.h() + x.s()`
+	testIntegerObject(t, testEval(t, inherit), 30)
+}

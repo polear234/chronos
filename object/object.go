@@ -24,6 +24,7 @@ const (
 	TIMELINE_OBJ     = "TIMELINE"
 	TRAVELLER_OBJ    = "TRAVELLER"
 	POINTER_OBJ      = "POINTER"
+	INTERFACE_OBJ    = "INTERFACE"
 )
 
 // Object 所有运行时对象的统一接口
