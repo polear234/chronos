@@ -12,8 +12,9 @@ import (
 // builtinModules 内置模块：import "os" 直接拿到，不走文件系统
 // WASM 环境没有文件系统和子进程，os 只提供纯内存/只读操作
 var builtinModules = map[string]func() *object.Module{
-	"os":   newOSModule,
-	"math": newMathModule,
+	"os":       newOSModule,
+	"math":     newMathModule,
+	"requests": newRequestsModule,
 }
 
 func lookupBuiltinModule(name string) *object.Module {

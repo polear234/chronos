@@ -105,3 +105,53 @@ func TestMathModule(t *testing.T) {
 		t.Fatalf("abs(-42) = %v，期望整数 42", res.Inspect())
 	}
 }
+
+func TestRequestsModuleRegistered(t *testing.T) {
+	mod := lookupBuiltinModule("requests")
+	if mod == nil {
+		t.Fatal("requests 模块没有注册")
+	}
+	for _, fn := range []string{"get", "post", "put", "delete", "head", "getJson", "download", "quote"} {
+		if _, ok := mod.Exports[fn]; !ok {
+			t.Errorf("requests.%s 不存在", fn)
+		}
+	}
+}
+
+func TestJSONConversion(t *testing.T) {
+	// JSON → Chronos 对象
+	obj := jsonToObject(`{"name":"test","n":42,"ok":true,"arr":[1,2,3]}`)
+	h, ok := obj.(*object.Hash)
+	if !ok {
+		t.Fatalf("期望 Hash，得到 %T", obj)
+	}
+
+	// 找 name 字段
+	found := false
+	for _, pair := range h.Pairs {
+		if k, ok := pair.Key.(*object.String); ok && k.Value == "name" {
+			if s, ok := pair.Value.(*object.String); ok && s.Value == "test" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Error("name 字段解析错误")
+	}
+}
+
+func TestObjectToGo(t *testing.T) {
+	// Chronos 对象 → Go 值（用于 POST JSON）
+	h := &object.Hash{Pairs: map[object.HashKey]object.HashPair{}}
+	key := &object.String{Value: "n"}
+	h.Pairs[key.HashKey()] = object.HashPair{Key: key, Value: &object.Integer{Value: 42}}
+
+	v := objectToGo(h)
+	m, ok := v.(map[string]any)
+	if !ok {
+		t.Fatalf("期望 map，得到 %T", v)
+	}
+	if m["n"] != int64(42) {
+		t.Errorf("n = %v，期望 42", m["n"])
+	}
+}

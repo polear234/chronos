@@ -13,8 +13,9 @@ import (
 
 // builtinModules 内置模块：import "os" 直接拿到，不走文件系统
 var builtinModules = map[string]func() *object.Module{
-	"os":   newOSModule,
-	"math": newMathModule,
+	"os":       newOSModule,
+	"math":     newMathModule,
+	"requests": newRequestsModule,
 }
 
 // lookupBuiltinModule 按名字返回内置模块，没有则返回 nil
