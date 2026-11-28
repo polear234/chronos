@@ -4,11 +4,11 @@
 
 # Chronospp
 
-**一门把「时间」做成一等公民的高级编程语言**
+**一门能回退时间的编程语言**
 
-*C++ 的语法 · Python 的表达力 · 独有的时间旅行*
+*变量记住自己的历史 · 事务自动回滚 · 时间点快照*
 
-*闭包 · 类与接口 · 指针 · 强类型 · 并行 · 包管理*
+*C++ 的语法 · Python 的表达力 · C++ 级的类型系统*
 
 <br/>
 
@@ -194,7 +194,7 @@ chpp run hello.chpp
 
 | 类别 | 能力 |
 |------|------|
-| 🕐 **时间特性** | `traveller` 回滚变量 · `withSnapshot` 事务快照 · `Timeline` 提交/撤销 |
+| 🕐 **时间旅行** | `traveller` 历史栈 · `mark()`/`restore()` 时间点 · `transaction` 自动回滚 · `diff()` 变化对比 |
 | 🧠 **语言核心** | 一等函数 · 闭包 · 递归 · 高阶函数 · 可选静态类型 |
 | 🏛️ **面向对象** | 类 · 单继承 · **接口** `interface`/`implements` · 多态 · `this`/`super` |
 | 🔧 **C++ 风格** | **指针** `&x`/`*p` · 强类型函数 `int add(int a, int b)` · 数据流 `prints << x << endl` |
@@ -270,6 +270,56 @@ class Dog extends Animal {
 let d = new Dog("Buddy")
 print(d.speak())   // "Buddy barks!"
 ```
+
+### 时间旅行
+
+Chronospp 最独特的特性——**变量可以记住自己的历史，随时回退**。
+
+```chronos
+// traveller 变量：每次赋值都记录历史
+let traveller int hp = 100
+hp = 80
+hp = 60
+hp = 40
+
+hp.history()     // [100, 80, 60]  所有历史
+hp.at(0)         // 100            第 0 步
+hp.at(1)         // 80             第 1 步
+hp.step()        // 3              历史深度
+hp.changes()     // [{from:100,to:80}, ...]  所有变化
+hp.rollback()    // 退到 60
+hp.reset()       // 清空历史
+```
+
+**全局时间点**：
+
+```chronos
+let hp = 100
+let gold = 50
+
+let t = mark("冒险前")     // 记录所有变量
+
+hp = 20; gold = 0
+
+diff(t)                   // ["hp", "gold"]  变了什么
+restore(t)                // 全部恢复
+```
+
+**事务**：出错自动回滚
+
+```chronos
+try {
+    transaction {
+        hp = 0
+        gold = 0
+        throw "失败"
+    }
+} catch (e) {
+    print(e)              // hp 和 gold 保持原样
+}
+```
+
+用途：游戏存档读档、配置回滚、交互式程序的撤销栈、数据调试。
 
 ### 接口
 
