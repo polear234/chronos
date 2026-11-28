@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Version = "1.1.0"
+$Version = "1.2.0"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # 优先脚本同目录（发布包），其次 ../bin（源码树）

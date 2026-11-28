@@ -5,6 +5,7 @@ package interpreter
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -307,13 +308,27 @@ func readProcessMemory(pid int, addr uintptr, size int) ([]byte, error) {
 		}
 	}
 
-	// 回退到 process_vm_readv
+	// 回退：process_vm_readv（系统调用号按架构区分）
+	var sysReadv uintptr
+	switch runtime.GOARCH {
+	case "amd64":
+		sysReadv = 310
+	case "arm64":
+		sysReadv = 270
+	case "386":
+		sysReadv = 347
+	case "arm":
+		sysReadv = 376
+	default:
+		return nil, fmt.Errorf("读取失败（不支持的架构 %s）", runtime.GOARCH)
+	}
+
 	local := make([]byte, size)
 	localIov := syscall.Iovec{Base: &local[0], Len: uint64(size)}
 	remoteIov := syscall.Iovec{Base: (*byte)(unsafe.Pointer(addr)), Len: uint64(size)}
 
 	_, _, errno := syscall.Syscall6(
-		syscall.SYS_PROCESS_VM_READV,
+		sysReadv,
 		uintptr(pid),
 		uintptr(unsafe.Pointer(&localIov)), 1,
 		uintptr(unsafe.Pointer(&remoteIov)), 1,
@@ -335,11 +350,25 @@ func writeProcessMemory(pid int, addr uintptr, data []byte) error {
 		}
 	}
 
+	var sysWritev uintptr
+	switch runtime.GOARCH {
+	case "amd64":
+		sysWritev = 311
+	case "arm64":
+		sysWritev = 271
+	case "386":
+		sysWritev = 348
+	case "arm":
+		sysWritev = 377
+	default:
+		return fmt.Errorf("写入失败（不支持的架构 %s）", runtime.GOARCH)
+	}
+
 	localIov := syscall.Iovec{Base: &data[0], Len: uint64(len(data))}
 	remoteIov := syscall.Iovec{Base: (*byte)(unsafe.Pointer(addr)), Len: uint64(len(data))}
 
 	_, _, errno := syscall.Syscall6(
-		syscall.SYS_PROCESS_VM_WRITEV,
+		sysWritev,
 		uintptr(pid),
 		uintptr(unsafe.Pointer(&localIov)), 1,
 		uintptr(unsafe.Pointer(&remoteIov)), 1,
