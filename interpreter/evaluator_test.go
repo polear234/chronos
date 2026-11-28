@@ -1478,3 +1478,44 @@ func TestOverloadWithRecursion(t *testing.T) {
 fact(5)`
 	testIntegerObject(t, testEval(t, src), 120)
 }
+
+func TestStruct(t *testing.T) {
+	// 基础：字段零值 + 读写
+	src := `struct Point {
+    int x
+    int y
+}
+let p = new Point()
+p.x = 10
+p.y = 20
+p.x + p.y`
+	testIntegerObject(t, testEval(t, src), 30)
+
+	// 分号写法
+	semi := `struct P { int a; int b }
+let p = new P()
+p.a = 1
+p.b = 2
+p.a + p.b`
+	testIntegerObject(t, testEval(t, semi), 3)
+
+	// 带方法
+	method := `struct Person {
+    string name
+    fn init(n) { this.name = n }
+    fn greet() { return "hi " + this.name }
+}
+let p = new Person("Tom")
+p.greet()`
+	if r := testEval(t, method); r.Inspect() != "hi Tom" {
+		t.Errorf("期望 hi Tom，得到 %s", r.Inspect())
+	}
+
+	// struct 作为参数类型
+	param := `struct Vec { int x }
+int getX(Vec v) { return v.x }
+let v = new Vec()
+v.x = 42
+getX(v)`
+	testIntegerObject(t, testEval(t, param), 42)
+}

@@ -86,6 +86,7 @@ const (
 	NOT_KW   = "NOT"
 	CLASS     = "CLASS"
 	INTERFACE = "INTERFACE"
+	STRUCT    = "STRUCT"
 	NEW      = "NEW"
 	THIS     = "THIS"
 	SUPER    = "SUPER"
@@ -123,6 +124,7 @@ var keywords = map[string]TokenType{
 	"not":      NOT_KW,
 	"class":     CLASS,
 	"interface": INTERFACE,
+	"struct":    STRUCT,
 	"new":      NEW,
 	"this":     THIS,
 	"super":    SUPER,

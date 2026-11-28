@@ -18,6 +18,9 @@ type Parser struct {
 
 	prefixParseFns map[token.TokenType]prefixParseFn
 	infixParseFns  map[token.TokenType]infixParseFn
+
+	// userTypes 用户定义的类型名（struct / class），用于识别函数参数类型
+	userTypes map[string]bool
 }
 
 type prefixParseFn func() ast.Expression
@@ -111,6 +114,10 @@ func (p *Parser) parseStatement() ast.Statement {
 func (p *Parser) isTypeName(s string) bool {
 	switch s {
 	case "int", "float", "string", "str", "bool", "void", "any":
+		return true
+	}
+	// 用户定义的类型（struct / class）
+	if p.userTypes != nil && p.userTypes[s] {
 		return true
 	}
 	return false
@@ -764,6 +771,96 @@ func (p *Parser) parseInterfaceLiteral() ast.Expression {
 	return il
 }
 
+// parseStructLiteral 解析 C 风格结构体：
+//   struct Point {
+//       int x
+//       int y
+//   }
+// 或者带分号的写法：
+//   struct Point { int x; int y }
+func (p *Parser) parseStructLiteral() ast.Expression {
+	cl := &ast.ClassLiteral{
+		Token:        p.curToken,
+		Methods:      make(map[string]*ast.FunctionLiteral),
+		Properties:   make(map[string]ast.Expression),
+		IsStruct:     true,
+		StructFields: []string{},
+	}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	cl.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.userTypes[cl.Name.Value] = true   // 登记为可用类型名
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	// 解析字段：每行是 "类型 名字" 或 "名字"；也允许 fn 方法
+	p.nextToken()
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		if p.curTokenIs(token.SEMICOLON) {
+			p.nextToken()
+			continue
+		}
+
+		// struct 里也允许定义方法
+		if p.curTokenIs(token.FN) {
+			fn := p.parseFunctionLiteral()
+			if fl, ok := fn.(*ast.FunctionLiteral); ok && fl.Name != "" {
+				cl.Methods[fl.Name] = fl
+			}
+			p.nextToken()
+			continue
+		}
+
+		fieldName := ""
+		fieldType := ""
+
+		if p.curTokenIs(token.IDENT) && p.isTypeName(p.curToken.Literal) &&
+			p.peekTokenIs(token.IDENT) {
+			// 类型 名字
+			fieldType = p.curToken.Literal
+			p.nextToken()
+			fieldName = p.curToken.Literal
+		} else if p.curTokenIs(token.IDENT) {
+			fieldName = p.curToken.Literal
+		} else {
+			p.nextToken()
+			continue
+		}
+
+		if fieldName != "" {
+			cl.StructFields = append(cl.StructFields, fieldName)
+			// 有类型的字段用零值初始化
+			cl.Properties[fieldName] = zeroValueForType(fieldType)
+		}
+
+		// 跳过可选的分号
+		if p.peekTokenIs(token.SEMICOLON) {
+			p.nextToken()
+		}
+		p.nextToken()
+	}
+
+	return cl
+}
+
+// zeroValueForType 返回类型的零值表达式
+func zeroValueForType(typeName string) ast.Expression {
+	tok := token.Token{Type: token.INT, Literal: "0"}
+	switch typeName {
+	case "string", "str":
+		return &ast.StringLiteral{Token: token.Token{Type: token.STRING, Literal: ""}, Value: ""}
+	case "bool":
+		return &ast.BooleanLiteral{Token: token.Token{Type: token.FALSE, Literal: "false"}, Value: false}
+	case "float":
+		return &ast.FloatLiteral{Token: token.Token{Type: token.FLOAT, Literal: "0.0"}, Value: 0}
+	}
+	return &ast.IntegerLiteral{Token: tok, Value: 0}
+}
+
 func (p *Parser) parseClassLiteral() ast.Expression {
 	cl := &ast.ClassLiteral{
 		Token:      p.curToken,
@@ -775,6 +872,7 @@ func (p *Parser) parseClassLiteral() ast.Expression {
 		return nil
 	}
 	cl.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.userTypes[cl.Name.Value] = true   // 登记为可用类型名
 
 	// extends 处理：extends 目前不是关键字，按 IDENT 处理
 	if p.peekTokenIs(token.IDENT) && p.peekToken.Literal == "extends" {
@@ -1209,6 +1307,8 @@ func (p *Parser) parseThrowStatement() *ast.ThrowStatement {
 // ---- 注册解析函数 ----
 
 func (p *Parser) registerPrefixFns() {
+	p.userTypes = make(map[string]bool)
+
 	p.prefixParseFns = map[token.TokenType]prefixParseFn{
 		token.IDENT:    p.parseIdentifier,
 		token.INT:      p.parseIntegerLiteral,
@@ -1232,6 +1332,7 @@ func (p *Parser) registerPrefixFns() {
 		token.LBRACE:   p.parseHashLiteral,
 		token.CLASS:     p.parseClassLiteral,
 		token.INTERFACE: p.parseInterfaceLiteral,
+		token.STRUCT:    p.parseStructLiteral,
 		token.NEW:      p.parseNewExpression,
 		token.THIS:     p.parseThisExpression,
 		token.SUPER:    p.parseSuperExpression,

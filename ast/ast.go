@@ -510,6 +510,8 @@ type ClassLiteral struct {
 	Interfaces  []*Identifier   // implements A, B
 	Methods     map[string]*FunctionLiteral
 	Properties  map[string]Expression
+	IsStruct    bool            // struct 声明的字段（不检查方法）
+	StructFields []string       // struct 的字段名列表
 }
 
 // InterfaceLiteral 接口声明：interface Name { fn method(args) }
