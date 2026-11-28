@@ -55,9 +55,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "upgrade", "-upgrade", "--upgrade":
 		return cmdUpgrade(args[1:], stdout, stderr)
 
-	case "studio", "-studio", "--studio":
-		return cmdStudio(args[1:], stdout, stderr)
-
 	case "serve", "-serve", "--serve":
 		return cmdServe(args[1:], stdout, stderr)
 

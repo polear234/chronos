@@ -648,7 +648,8 @@ func evalStreamExpression(node *ast.InfixExpression, env *object.Environment) ob
 		if isError(val) {
 			return val
 		}
-		fmt.Fprintln(outputWriter, val.Inspect())
+		// C++ 的 cout << 不换行；要换行请用 print 或自己输出 "\n"
+		fmt.Fprint(outputWriter, val.Inspect())
 		return NIL
 
 	case ">>":
