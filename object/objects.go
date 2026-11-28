@@ -93,6 +93,7 @@ type Function struct {
 	Body       *ast.BlockStatement
 	Env        *Environment
 	Name       string
+	ReturnType string // C++ 风格返回类型，空串表示不检查
 }
 
 func (f *Function) Type() ObjectType { return FUNCTION_OBJ }

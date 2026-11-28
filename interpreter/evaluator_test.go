@@ -1290,3 +1290,46 @@ prints << "b"`
 		t.Errorf("输出为 %q，期望 %q", buf.String(), "a\nb")
 	}
 }
+
+func TestStrongTyping(t *testing.T) {
+	// 应该报错的场景
+	errors := []struct {
+		input string
+		desc  string
+	}{
+		{`int add(int a, int b) { return a + b }
+add(1)`, "参数个数不足"},
+		{`int add(int a, int b) { return a + b }
+add(1, 2, 3)`, "参数个数过多"},
+		{`int add(int a, int b) { return a + b }
+add("x", "y")`, "参数类型不符"},
+		{`int bad() { return "hello" }
+bad()`, "返回值类型不符"},
+		{`void hello() { return 42 }
+hello()`, "void 函数返回值"},
+	}
+	for _, tt := range errors {
+		result := testEval(t, tt.input)
+		if !isError(result) {
+			t.Errorf("%s：期望报错，得到 %s", tt.desc, result.Inspect())
+		}
+	}
+
+	// 应该正常的场景
+	valid := []struct {
+		input string
+		want  int64
+	}{
+		{`int add(int a, int b) { return a + b }
+add(1, 2)`, 3},
+		{`int conv(int a) { return a }
+conv("42")`, 42},
+		{`float half(float x) { return x / 2 }
+int(half(7))`, 3},
+		{`any pass(any x) { return x }
+pass(42)`, 42},
+	}
+	for _, tt := range valid {
+		testIntegerObject(t, testEval(t, tt.input), tt.want)
+	}
+}

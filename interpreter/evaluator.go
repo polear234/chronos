@@ -399,6 +399,7 @@ func evalFunctionLiteral(fl *ast.FunctionLiteral, env *object.Environment) objec
 		Body:       fl.Body,
 		Env:        env,
 		Name:       fl.Name,
+		ReturnType: fl.ReturnType,
 	}
 	// 命名函数：把函数名绑定到当前环境，支持递归调用
 	if fl.Name != "" {
@@ -538,8 +539,37 @@ func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Ob
 func applyFunction(fn object.Object, args []object.Object, env *object.Environment) object.Object {
 	switch fn := fn.(type) {
 	case *object.Function:
+		// 参数个数与类型检查
+		if err := checkFunctionArgs(fn, args); err != nil {
+			return err
+		}
 		extended := extendFunctionEnv(fn, args)
-		return unwrapReturnValue(Eval(fn.Body, extended))
+		result := unwrapReturnValue(Eval(fn.Body, extended))
+		if isError(result) {
+			return result
+		}
+		// 返回类型检查（只在声明了类型时）
+		if fn.ReturnType != "" && fn.ReturnType != "void" && fn.ReturnType != "any" {
+			checked := coerceToType(result, fn.ReturnType)
+			if err := checkVarType(fn.ReturnType, checked); err != nil {
+				name := fn.Name
+				if name == "" {
+					name = "匿名函数"
+				}
+				return newError("%s 声明返回 %s，实际返回 %s",
+					name, fn.ReturnType, result.Type())
+			}
+			return checked
+		}
+		// void 函数不该有返回值
+		if fn.ReturnType == "void" && result != NIL {
+			name := fn.Name
+			if name == "" {
+				name = "匿名函数"
+			}
+			return newError("%s 声明为 void，不应有返回值", name)
+		}
+		return result
 	case *object.Builtin:
 		return fn.Fn(args...)
 	case *object.Method:
@@ -567,6 +597,33 @@ func applyFunction(fn object.Object, args []object.Object, env *object.Environme
 	default:
 		return newError("not a function: %s", fn.Type())
 	}
+}
+
+// checkFunctionArgs 校验参数个数和类型，返回错误对象或 nil
+func checkFunctionArgs(fn *object.Function, args []object.Object) object.Object {
+	name := fn.Name
+	if name == "" {
+		name = "匿名函数"
+	}
+	if len(args) != len(fn.Parameters) {
+		return newError("%s 需要 %d 个参数，收到 %d 个",
+			name, len(fn.Parameters), len(args))
+	}
+	for i, param := range fn.Parameters {
+		if param.TypeHint == "" || i >= len(args) {
+			continue
+		}
+		val := args[i]
+		if val == NIL {
+			continue
+		}
+		converted := coerceToType(val, param.TypeHint)
+		if err := checkVarType(param.TypeHint, converted); err != nil {
+			return newError("%s 的第 %d 个参数 %s 声明为 %s，收到 %s",
+				name, i+1, param.Value, param.TypeHint, val.Type())
+		}
+	}
+	return nil
 }
 
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
