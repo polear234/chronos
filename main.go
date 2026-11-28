@@ -49,8 +49,20 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "uninstall", "-uninstall", "--uninstall":
 		return cmdUninstall(args[1:], stdout, stderr)
 
-	case "packages", "-packages", "--packages":
+	case "packages", "list", "-packages", "--packages":
 		return cmdPackages(args[1:], stdout, stderr)
+
+	case "search", "-search", "--search":
+		return cmdSearch(args[1:], stdout, stderr)
+
+	case "info", "show", "-info", "--info":
+		return cmdInfo(args[1:], stdout, stderr)
+
+	case "freeze", "-freeze", "--freeze":
+		return cmdFreeze(args[1:], stdout, stderr)
+
+	case "pack", "-pack", "--pack":
+		return cmdPack(args[1:], stdout, stderr)
 
 	case "upgrade", "-upgrade", "--upgrade":
 		return cmdUpgrade(args[1:], stdout, stderr)
@@ -138,15 +150,22 @@ func printUsage(w io.Writer) {
 
 Usage:
   chpp                              Start the interactive REPL
-  chpp run <file.chpp>               Run a script file
+  chpp run <file.chpp>              Run a script file
   chpp run -                        Read and run source from stdin
-  chpp build <file.chpp>             Compile into a standalone executable
-  chpp build <file.chpp> -o <name>   Compile with a custom output name
+  chpp build <file.chpp>            Compile into a standalone executable
+  chpp build <file.chpp> -o <name>  Compile with a custom output name
   chpp serve [dir] [-p port]        Serve a directory over HTTP
   chpp upgrade [--check]            Update to the latest release
-  chpp install <pkg.chm | name>     Install a third-party package
+
+Packages:
+  chpp install <pkg.chm | name>     Install a package
   chpp uninstall <name>             Remove an installed package
-  chpp packages                     List installed packages
+  chpp list                         List installed packages
+  chpp search [keyword]             Search available packages
+  chpp info <name>                  Show package details
+  chpp freeze                       List installed versions
+  chpp pack <dir> [-o out.chm]      Build a .chm from a directory
+
   chpp version                      Print version
   chpp help                         Show this help
 
@@ -156,6 +175,8 @@ Examples:
   chpp build examples/hello.chpp             # 产出 ./hello 可执行文件
   chpp build app.chpp -o /usr/local/bin/app
   chpp serve ./public -p 8080               # 静态网站服务器
+  chpp install json                         # 装第三方包
+  chpp search                               # 看看有哪些包
   echo 'print("hi")' | chpp run -
 `, version)
 }
