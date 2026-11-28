@@ -1,0 +1,68 @@
+// ══════════════════════════════════════════
+//  Chronospp UI 演示 — 手机 IDE 直接运行
+//  在 APK 里打开即可看到交互界面
+// ══════════════════════════════════════════
+
+import "ui"
+
+ui.reset()
+ui.title("Chronospp 应用")
+ui.text("这是一个交互式 UI 示例")
+
+// ── 计数器 ──
+let count = 0
+
+ui.button("点击 +1", fn() {
+    count = count + 1
+    ui.text("当前计数: " + count)
+})
+
+// ── 输入问候 ──
+ui.input("输入你的名字", fn(name) {
+    ui.text("你好, " + name + "!")
+})
+
+// ── 音量控制 ──
+ui.slider("音量", 0, 100, 50, fn(v) {
+    ui.text("音量: " + v + "%")
+})
+
+// ── 开关 ──
+ui.checkbox("深色模式", false, fn(on) {
+    if on == "1" {
+        ui.text("已切换到深色模式")
+    } else {
+        ui.text("已切换到浅色模式")
+    }
+})
+
+// ── 下拉选择 ──
+ui.select("选择主题色", ["蓝色", "绿色", "红色", "紫色"], fn(c) {
+    ui.text("主题色: " + c)
+})
+
+// ── 待办列表 ──
+ui.text("今日任务")
+ui.list([
+    "完成 Chronospp 项目",
+    "写 50 行代码",
+    "练习 30 分钟",
+    "阅读技术文档"
+])
+
+// ── 进度条 ──
+ui.text("项目进度")
+ui.progress(72)
+
+// ── 分隔卡片 ──
+ui.button("重置所有", fn() {
+    count = 0
+    ui.reset()
+    ui.title("Chronospp 应用")
+    ui.text("已重置！")
+    ui.show()
+})
+
+// 生成 HTML
+let html = ui.show()
+print("UI 已生成，共 " + len(html) + " 字节")
