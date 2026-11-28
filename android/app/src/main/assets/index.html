@@ -526,6 +526,13 @@ function runCode(){
   const ms = (performance.now() - t0).toFixed(1);
   timingEl.textContent = ms + ' ms';
 
+  // 检测是否是 UI HTML 输出
+  if (res.ui && res.ui.length > 0) {
+    showUiScreen(res.ui);
+    outEl.innerHTML = '<span class="dim">UI 已渲染（点右下角 ✕ 关闭）</span>';
+    return;
+  }
+
   let html = '';
   if (res.output) html += escapeHtml(res.output);
   if (res.error) {
@@ -536,6 +543,36 @@ function runCode(){
   outEl.innerHTML = html;
   outEl.scrollTop = outEl.scrollHeight;
 }
+
+// 显示全屏 UI（用 iframe 隔离）
+function showUiScreen(html) {
+  const frame = document.getElementById('uiFrame');
+  document.getElementById('uiScreen').style.display = 'block';
+  // 注入 UI 回调桥
+  const bridge = `
+<script>
+function chronosCallback(id, value) {
+  parent.postMessage({type:'chronosUI', id:id, value:value}, '*');
+}
+<\/script>`;
+  frame.srcdoc = html.replace('</head>', bridge + '</head>');
+}
+
+function closeUiScreen() {
+  document.getElementById('uiScreen').style.display = 'none';
+  document.getElementById('uiFrame').srcdoc = '';
+}
+
+// UI 回调转发给 WASM
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'chronosUI') {
+    try {
+      if (typeof chronosUICallback === 'function') {
+        chronosUICallback(e.data.id, e.data.value);
+      }
+    } catch (err) { console.error('UI callback error:', err); }
+  }
+});
 
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -804,6 +841,15 @@ function doBuildApk() {
   bridge.compileApkWithOptions(name, pkg, codeEl.value, selectedIcon, customIconData || '');
 }
 </script>
+
+
+<!-- 全屏 UI 渲染区（脚本调用 ui.show() 时显示） -->
+<div id="uiScreen" style="display:none;position:fixed;inset:0;background:#fff;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+  <iframe id="uiFrame" style="width:100%;height:100%;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>
+  <div style="position:fixed;bottom:16px;right:16px;z-index:2001;">
+    <button onclick="closeUiScreen()" style="width:48px;height:48px;border-radius:24px;border:none;background:#333;color:#fff;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">✕</button>
+  </div>
+</div>
 
 </body>
 </html>

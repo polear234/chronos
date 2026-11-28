@@ -124,14 +124,25 @@ skip = {"template.apk", "chronos.keystore"} if bare else set()
 if bare:
     # 模板/裸版不需要 sh 编译内核（只有 IDE 需要）
     skip.add("chpp-linux-arm64")
+    skip.add("runtime-index.html")
 with zipfile.ZipFile(out, "a", zipfile.ZIP_DEFLATED) as z:
     z.write(os.path.join(build, "dex", "classes.dex"), "classes.dex")
+    runtime_html = os.path.join(assets, "runtime-index.html")
+    use_runtime = bare and os.path.exists(runtime_html)
+    runtime_bytes = open(runtime_html, "rb").read() if use_runtime else None
+
     for root, _, files in os.walk(assets):
         for f in files:
             if f in skip:
                 continue
             p = os.path.join(root, f)
-            z.write(p, "assets/" + os.path.relpath(p, assets).replace(os.sep, "/"))
+            arcname = "assets/" + os.path.relpath(p, assets).replace(os.sep, "/")
+            # 模板：index.html 换成运行时页面（IDE 版保留自己的 index.html）
+            if use_runtime and arcname == "assets/index.html":
+                z.writestr(arcname, runtime_bytes)
+                print("  模板 index.html → runtime-index.html")
+                continue
+            z.write(p, arcname)
 PY
 
 echo "==> 6/6 对齐 + 签名"

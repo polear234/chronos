@@ -506,6 +506,19 @@ public class MainActivity extends Activity {
                 entries.put(name, data);
             }
         }
+        // 关键：用运行时页面替换 IDE 页面，否则打包出来的 APK 打开还是 IDE
+        try (InputStream rin = getAssets().open("runtime-index.html")) {
+            String runtimeHtml = new String(readAllBytes(rin), StandardCharsets.UTF_8);
+            // 把脚本内嵌到 HTML 里（避免依赖 assets/script.chpp 的读取顺序）
+            String escaped = script
+                    .replace("&", "&amp;")
+                    .replace("</script>", "<\\/script>");
+            String injected = runtimeHtml.replace("</body>",
+                    "<script id=\"chronos-script\" type=\"text/plain\">" + escaped + "</script>\n</body>");
+            entries.put("assets/index.html", injected.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            // 找不到运行时页面时保持原样（兼容旧 template）
+        }
         entries.put("assets/script.chpp", script.getBytes(StandardCharsets.UTF_8));
 
         // 2) 写出：resources.arsc 优先且 STORED

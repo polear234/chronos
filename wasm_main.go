@@ -21,6 +21,7 @@ var version = "1.5.0"
 type runResult struct {
 	Output string `json:"output"`
 	Error  string `json:"error"`
+	UI     string `json:"ui,omitempty"`   // ui.show() 生成的 HTML
 }
 
 func main() {
@@ -150,6 +151,11 @@ func execute(src string) (result runResult) {
 	result.Output = buf.String()
 	if r != nil && r.Type() == object.ERROR_OBJ {
 		result.Error = r.Inspect()
+	}
+
+	// 脚本调用过 ui.show() 时，把生成的 HTML 带回去给前端渲染
+	if uiHTML := interpreter.GetUIHTML(); uiHTML != "" {
+		result.UI = uiHTML
 	}
 	return
 }
