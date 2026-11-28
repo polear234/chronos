@@ -190,7 +190,16 @@ func generateHTML(elements []*UIElement) string {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 .chronos-ui .checkbox-label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .chronos-ui .checkbox-label input { width: auto; margin: 0; }
-.chronos-ui .slider { width: 100%; margin: 8px 0; }
+.chronos-ui .slider-wrap { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.chronos-ui .slider { flex: 1; width: auto; margin: 0; height: 6px;
+  -webkit-appearance: none; appearance: none; background: #ddd; border-radius: 3px; outline: none; }
+.chronos-ui .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%; background: #007AFF; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,122,255,0.4); }
+.chronos-ui .slider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%;
+  background: #007AFF; cursor: pointer; border: none; }
+.chronos-ui .slider-val { min-width: 42px; text-align: right; font-weight: 600;
+  font-size: 15px; color: #007AFF; font-variant-numeric: tabular-nums; }
 .chronos-ui label { font-weight: 500; margin: 4px 0; display: block; }
 .chronos-ui img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
 </style>
@@ -313,12 +322,22 @@ func writeElement(sb *strings.Builder, el *UIElement, depth int) {
 		if val == "" {
 			val = "50"
 		}
-		sb.WriteString(fmt.Sprintf(`%s<input type="range" class="slider" id='%s' min="%s" max="%s" value="%s" step="1"`, indent, el.ElemID, min, max, val))
+		// 滑块 + 实时数值显示
+		sb.WriteString(fmt.Sprintf(`%s<div class="slider-wrap"><input type="range" class="slider" id='%s' min="%s" max="%s" value="%s" step="1"`,
+			indent, el.ElemID, min, max, val))
 		if cbID != "" {
-			// oninput 实时显示数值，但节流避免频繁重绘；onchange 拖动结束才回调
-			sb.WriteString(fmt.Sprintf(` oninput="if(window.__chronosSliderTick)clearTimeout(window.__chronosSliderTick);window.__chronosSliderTick=setTimeout(function(){chronosCallback('%s', document.getElementById('%s').value)},120)"`, cbID, el.ElemID))
+			// 边滑边回调：立即更新数值显示，回调节流 80ms
+			sb.WriteString(fmt.Sprintf(` oninput="`+
+				`(function(el){`+
+				`  var out=el.parentNode.querySelector('.slider-val');`+
+				`  if(out)out.textContent=el.value;`+
+				`  if(window.__csTick)clearTimeout(window.__csTick);`+
+				`  window.__csTick=setTimeout(function(){chronosCallback('%s', el.value)},80);`+
+				`})(this)"`, cbID))
+		} else {
+			sb.WriteString(` oninput="(function(el){var out=el.parentNode.querySelector('.slider-val');if(out)out.textContent=el.value})(this)"`)
 		}
-		sb.WriteString(" />\n")
+		sb.WriteString(fmt.Sprintf(` /><span class="slider-val">%s</span></div>`+"\n", val))
 	case "list":
 		sb.WriteString(indent + "<ul>\n")
 		for _, child := range el.Children {
