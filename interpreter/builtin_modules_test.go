@@ -155,3 +155,56 @@ func TestObjectToGo(t *testing.T) {
 		t.Errorf("n = %v，期望 42", m["n"])
 	}
 }
+
+func TestProcessModule(t *testing.T) {
+	mod := lookupBuiltinModule("process")
+	if mod == nil {
+		t.Fatal("process 模块没有注册")
+	}
+	for _, fn := range []string{"find", "list", "maps", "readBytes", "writeBytes",
+		"readInt", "writeInt", "readFloat", "writeFloat", "scanInt"} {
+		if _, ok := mod.Exports[fn]; !ok {
+			t.Errorf("process.%s 不存在", fn)
+		}
+	}
+}
+
+func TestBinaryReadWrite(t *testing.T) {
+	mod := lookupBuiltinModule("os")
+	writeFn, _ := mod.Exports["writeBinary"].(*object.Builtin)
+	readFn, _ := mod.Exports["readBinary"].(*object.Builtin)
+	if writeFn == nil || readFn == nil {
+		t.Fatal("os.writeBinary / readBinary 不存在")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.bin")
+
+	// 写入字节
+	data := &object.Array{Elements: []object.Object{
+		&object.Integer{Value: 255},
+		&object.Integer{Value: 0},
+		&object.Integer{Value: 128},
+	}}
+	res := writeFn.Fn(&object.String{Value: path}, data)
+	if isError(res) {
+		t.Fatalf("writeBinary 失败: %s", res.Inspect())
+	}
+
+	// 读回
+	res = readFn.Fn(&object.String{Value: path})
+	arr, ok := res.(*object.Array)
+	if !ok {
+		t.Fatalf("readBinary 返回 %T", res)
+	}
+	if len(arr.Elements) != 3 {
+		t.Fatalf("长度 %d，期望 3", len(arr.Elements))
+	}
+	want := []int64{255, 0, 128}
+	for i, w := range want {
+		got := arr.Elements[i].(*object.Integer).Value
+		if got != w {
+			t.Errorf("第 %d 字节 = %d，期望 %d", i, got, w)
+		}
+	}
+}

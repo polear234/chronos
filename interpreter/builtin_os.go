@@ -16,6 +16,7 @@ var builtinModules = map[string]func() *object.Module{
 	"os":       newOSModule,
 	"math":     newMathModule,
 	"requests": newRequestsModule,
+	"process":  newProcessModule,
 }
 
 // lookupBuiltinModule 按名字返回内置模块，没有则返回 nil
@@ -83,6 +84,51 @@ func newOSModule() *object.Module {
 			return newError("os.appendFile: %v", err)
 		}
 		return NIL
+	})
+
+	// ── 二进制读写 ──────────────────────
+	// os.readBinary(path) → 数组，每个元素是 0-255 的字节
+	def("readBinary", func(args ...object.Object) object.Object {
+		if len(args) < 1 {
+			return newError("os.readBinary 需要一个文件路径")
+		}
+		path := args[0].Inspect()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return newError("os.readBinary: %v", err)
+		}
+		elems := make([]object.Object, len(data))
+		for i, b := range data {
+			elems[i] = &object.Integer{Value: int64(b)}
+		}
+		return &object.Array{Elements: elems}
+	})
+
+	// os.writeBinary(path, bytes) 把字节数组写入文件
+	def("writeBinary", func(args ...object.Object) object.Object {
+		if len(args) < 2 {
+			return newError("os.writeBinary 需要路径和字节数组")
+		}
+		path := args[0].Inspect()
+		arr, ok := args[1].(*object.Array)
+		if !ok {
+			return newError("os.writeBinary 第二个参数要是字节数组")
+		}
+		data := make([]byte, len(arr.Elements))
+		for i, e := range arr.Elements {
+			n, ok := e.(*object.Integer)
+			if !ok {
+				return newError("os.writeBinary 第 %d 个元素不是整数", i+1)
+			}
+			data[i] = byte(n.Value)
+		}
+		if dir := filepath.Dir(path); dir != "" && dir != "." {
+			os.MkdirAll(dir, 0o755)
+		}
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			return newError("os.writeBinary: %v", err)
+		}
+		return &object.Integer{Value: int64(len(data))}
 	})
 
 	def("exists", func(args ...object.Object) object.Object {
