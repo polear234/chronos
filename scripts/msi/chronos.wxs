@@ -30,7 +30,8 @@
     <!-- 完成页上显示的文字：明确告知安装成功以及怎么用 -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
               Value="Chronospp 已安装完成。&#xD;&#xA;&#xD;&#xA;打开新的命令提示符，输入 chpp 即可使用（PATH 已自动配置）。" />
-    <Property Id="ARPNOMODIFY" Value="1" />
+    <!-- 注意：不要在这里定义 ARPNOMODIFY，WixUI_Minimal 已内置同名 Property，
+         重复定义会让 light.exe 报 LGHT0091 Duplicate symbol 而失败 -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.license)" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
