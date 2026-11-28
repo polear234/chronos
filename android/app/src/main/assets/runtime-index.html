@@ -100,7 +100,8 @@ function getScriptContent(){
   return '';
 }
 
-// 启动 WASM
+// 启动 WASM（等 DOM 解析完，确保 chronos-script 元素已存在）
+function startBoot(){
 (async function boot(){
   const script = getScriptContent();
   if (!script.trim()) {
@@ -176,6 +177,14 @@ function getScriptContent(){
     appendOut('（无输出）', 'dim');
   }
 })();
+}
+
+// DOM 就绪后再启动
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startBoot);
+} else {
+  startBoot();
+}
 </script>
 </body>
 </html>
