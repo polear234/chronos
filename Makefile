@@ -1,7 +1,7 @@
 .PHONY: build run test clean dist install all
 
 BINARY := chpp
-VERSION := 1.4.0
+VERSION := 1.5.0
 
 # 默认：编译出完全独立的静态二进制（无外部依赖，可直接拷贝到任何同架构 Linux 运行）
 build:

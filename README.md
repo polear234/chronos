@@ -203,7 +203,7 @@ chpp run hello.chpp
 | 🎯 **控制流** | `if`/`elif`/`else` · `while` · `for-in` · `break`/`continue` · 循环 `else` |
 | 🧩 **模式匹配** | `match` / `case` / `default` |
 | 🛡️ **错误处理** | `try` / `catch` / `finally` / `throw` |
-| 📦 **模块系统** | `import` / `as` · 循环引用检测 · 内置 `os`/`math`/`requests` |\n| 🔗 **FFI** | 调用 `.so`/`.dll`/`.dylib` · `ffi.load`/`lib.call` · 纯 Go 零 cgo |
+| 📦 **模块系统** | `import` / `as` · 循环引用检测 · 内置 `os`/`math`/`requests` |\n| 🔗 **FFI** | 调用 `.so`/`.dll`/`.dylib` · `ffi.load`/`lib.call` · 纯 Go 零 cgo |\n| 📱 **交互 UI** | `ui.button`/`input`/`slider`/`checkbox` · 生成 HTML · 手机 APK 内置渲染 |
 | 📚 **包管理** | `.chm` 包 · `chpp install/search/info/list/freeze/pack` · 依赖与版本约束 |
 | 🌏 **国际化** | Unicode 标识符：中文 / 日文 / 俄文均可命名 |
 | 🖥️ **工具链** | `chpp serve` 静态服务器 · `chpp upgrade` 自更新 · **Chronospp Studio** 编辑器 |
@@ -270,6 +270,50 @@ class Dog extends Animal {
 let d = new Dog("Buddy")
 print(d.speak())   // "Buddy barks!"
 ```
+
+### 交互式 UI
+
+生成手机/桌面可用的界面，按钮点击、输入框、滑块都能调回 Chronospp 函数：
+
+```chronos
+import "ui"
+
+ui.title("我的应用")
+ui.text("欢迎使用 Chronospp！")
+
+ui.button("点我打招呼", fn() {
+    print("Hello!")
+})
+ui.input("你的名字", fn(name) {
+    print("你好, " + name)
+})
+ui.slider("音量", 0, 100, 50, fn(v) {
+    print("音量: " + v)
+})
+ui.checkbox("启用通知", true, fn(on) {
+    print("通知: " + on)
+})
+ui.select("选择颜色", ["红","绿","蓝"], fn(c) {
+    print("选择了: " + c)
+})
+ui.list(["任务1", "任务2"])
+ui.progress(75)
+
+let html = ui.show()    // 生成 HTML（含交互回调）
+```
+
+| 组件 | 交互 |
+|------|------|
+| `button("文本", fn)` | 点击 → 回调 |
+| `input("提示", fn)` | 回车 → 传值 |
+| `slider("标签", min, max, val, fn)` | 拖动 → 实时传值 |
+| `checkbox("标签", checked, fn)` | 切换 → 传 1/0 |
+| `select("标签", ["a","b"], fn)` | 选择 → 传选项 |
+| `list([...])` | 显示列表 |
+| `progress(75)` | 进度条 |
+| `card(...)` / `row(...)` | 布局容器 |
+
+> 手机 IDE 编译的 APK 内置 WebView，`ui.show()` 直接渲染。
 
 ### FFI 调用动态库
 
